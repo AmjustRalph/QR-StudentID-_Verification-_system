@@ -1,0 +1,20 @@
+# Minimal config so the Supabase CLI recognises this as a project directory
+# for `supabase link` / `supabase functions deploy`. Nothing here configures
+# the local dev stack (no `supabase start` is used in this project — the
+# frontend talks to the hosted project directly, per .env).
+project_id = "zrpqirockgeyxwtyxsop"
+
+[functions.mint-code]
+verify_jwt = false
+
+[functions.mint-card-code]
+verify_jwt = false
+
+[functions.verify-code]
+verify_jwt = false
+
+[functions.invite-staff]
+verify_jwt = false
+
+[functions.set-account-status]
+verify_jwt = false

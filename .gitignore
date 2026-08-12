@@ -1,0 +1,21 @@
+node_modules
+dist
+dist-ssr
+*.local
+*.tsbuildinfo
+
+# Supabase CLI's local link cache (project ref, pooler host, tool versions) —
+# machine-specific state from `supabase link`, not project source.
+supabase/.temp
+
+.env
+.env.*
+!.env.example
+
+.DS_Store
+*.log
+npm-debug.log*
+
+.vscode/*
+!.vscode/extensions.json
+.idea

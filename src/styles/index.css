@@ -1,0 +1,121 @@
+@import 'tailwindcss';
+
+@import '@fontsource/poppins/400.css';
+@import '@fontsource/poppins/500.css';
+@import '@fontsource/poppins/600.css';
+@import '@fontsource/poppins/700.css';
+
+/* ---------------------------------------------------------------------------
+   QR-SIDVS design tokens.
+   Derived from the mockups in design-reference/ (Figures 4.1 - 4.6) and the
+   palette fixed in QR-SIDVS-Build-Spec_2.md §7. Every colour used anywhere in
+   the app should come from this block — no raw hex in components.
+--------------------------------------------------------------------------- */
+@theme {
+  /* Primary navy — sidebar rail, hero panel, page headings */
+  --color-navy-950: #0a1730;
+  --color-navy-900: #10203d;
+  --color-navy-800: #16294d;
+  --color-navy-700: #1b3968;
+  --color-navy-600: #274a80;
+
+  /* Accent azure — primary actions, active nav, links, focus rings */
+  --color-azure-700: #1d51c4;
+  --color-azure-600: #2f6fed;
+  --color-azure-500: #4d84f2;
+  --color-azure-100: #dbe7fd;
+  --color-azure-50: #eef3fe;
+
+  /* Verdict colours — verification outcomes and status pills */
+  --color-verified-700: #0a7a53;
+  --color-verified-600: #0e9c6b;
+  --color-verified-100: #d8f2e7;
+  --color-verified-50: #edf9f3;
+
+  --color-denied-700: #b02c2c;
+  --color-denied-600: #d93b3b;
+  --color-denied-100: #fadddd;
+  --color-denied-50: #fdeeee;
+
+  --color-pending-700: #a06e12;
+  --color-pending-600: #c88a1e;
+  --color-pending-100: #f8ebd2;
+  --color-pending-50: #fcf6ea;
+
+  /* Neutrals — canvas, cards, borders, body copy */
+  --color-canvas: #f3f6fc;
+  --color-surface: #ffffff;
+  --color-line: #e2e8f4;
+  --color-line-strong: #cbd6ea;
+  --color-ink: #10203d;
+  --color-ink-muted: #5b6b88;
+  --color-ink-faint: #8a99b5;
+
+  /* Typography — Poppins for display, system sans for body, mono for data */
+  --font-display: 'Poppins', 'Segoe UI', system-ui, sans-serif;
+  --font-sans: 'DejaVu Sans', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --font-mono: ui-monospace, 'DejaVu Sans Mono', 'Cascadia Mono', Consolas, monospace;
+
+  /* Elevation — cards sit almost flat on the canvas, as in the mockups */
+  --shadow-card: 0 1px 2px rgb(16 32 61 / 0.04), 0 1px 3px rgb(16 32 61 / 0.06);
+  --shadow-panel: 0 4px 16px rgb(16 32 61 / 0.10);
+  --shadow-pop: 0 12px 32px rgb(16 32 61 / 0.18);
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background-color: var(--color-canvas);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-display);
+    font-weight: 700;
+    letter-spacing: -0.011em;
+  }
+
+  /* One consistent focus treatment across every interactive element. */
+  :focus-visible {
+    outline: 2px solid var(--color-azure-600);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+}
+
+@layer components {
+  /* The recurring "eyebrow" label: tiny, mono, tracked, uppercase.
+     Used above headings and as table/section captions throughout the mockups. */
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    line-height: 1rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  /* Tabular data — IDs, timestamps, codes. Never proportional. */
+  .data {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
