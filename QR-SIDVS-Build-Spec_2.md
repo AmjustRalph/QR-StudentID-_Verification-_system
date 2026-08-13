@@ -5,7 +5,7 @@
 **Stack:** React + TypeScript + Tailwind CSS (frontend) · Supabase (Postgres, Auth, Edge Functions, RLS)
 **Scope:** Final year academic project — built for a demo/test cohort, not full institutional scale.
 
-This document is the single source of truth for the build. Hand this to Claude Code at the start of each session for context.
+This project was built by Ralph
 
 ---
 
