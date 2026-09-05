@@ -33,7 +33,7 @@ export function AuthLayout({ eyebrow, title, subtitle, children, footer }: Props
             Verify identity in under three seconds.
           </h1>
           <p className="mt-5 max-w-sm text-sm leading-relaxed text-azure-100/70">
-            QR-SIDVS replaces manual registers and physical ID checks with a single scan — linked
+            QR-SIDVS replaces manual registers and physical ID checks with a single scan  linked
             directly to the GCTU student record.
           </p>
         </div>

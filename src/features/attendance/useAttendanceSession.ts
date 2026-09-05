@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
-import type { AttendanceSessionRecord, ScanSource, StudentStatus } from '@/lib/database.types'
+import type { AttendanceSessionRecord, ScanSource, SessionPeriod, StudentStatus } from '@/lib/database.types'
 
 export type RosterEntry = {
   studentId: string
@@ -32,6 +32,9 @@ export function useAttendanceSession(courseId: string, lecturerId: string) {
   const [roster, setRoster] = useState<RosterEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  /** True once we know there is no open session to resume, so the caller must
+   * collect a classroom + session period before one can be started. */
+  const [needsSetup, setNeedsSetup] = useState(false)
 
   const loadRoster = useCallback(
     async (sessionId: string) => {
@@ -86,21 +89,16 @@ export function useAttendanceSession(courseId: string, lecturerId: string) {
         .maybeSingle()
       if (findError) throw findError
 
-      let activeSession = existing
-      if (!activeSession) {
-        const { data: created, error: createError } = await supabase
-          .from('attendance_sessions')
-          .insert({ course_id: courseId, lecturer_id: lecturerId })
-          .select()
-          .single()
-        if (createError) throw createError
-        activeSession = created
+      if (existing) {
+        setSession(existing)
+        setNeedsSetup(false)
+        await loadRoster(existing.id)
+      } else {
+        setSession(null)
+        setNeedsSetup(true)
       }
-
-      setSession(activeSession)
-      await loadRoster(activeSession.id)
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Could not start the session.')
+      setError(caught instanceof Error ? caught.message : 'Could not load this session.')
     } finally {
       setLoading(false)
     }
@@ -109,6 +107,21 @@ export function useAttendanceSession(courseId: string, lecturerId: string) {
   useEffect(() => {
     void init()
   }, [init])
+
+  const startSession = useCallback(
+    async (venue: string, sessionPeriod: SessionPeriod) => {
+      const { data: created, error: createError } = await supabase
+        .from('attendance_sessions')
+        .insert({ course_id: courseId, lecturer_id: lecturerId, venue, session_period: sessionPeriod })
+        .select()
+        .single()
+      if (createError) throw createError
+      setSession(created)
+      setNeedsSetup(false)
+      await loadRoster(created.id)
+    },
+    [courseId, lecturerId, loadRoster],
+  )
 
   const refreshSession = useCallback(async (sessionId: string) => {
     const { data, error: refreshError } = await supabase
@@ -161,5 +174,5 @@ export function useAttendanceSession(courseId: string, lecturerId: string) {
     [session],
   )
 
-  return { session, roster, loading, error, markPresent, endSession }
+  return { session, roster, loading, error, needsSetup, startSession, markPresent, endSession }
 }

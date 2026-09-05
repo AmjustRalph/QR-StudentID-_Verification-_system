@@ -1,18 +1,21 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { NavLink } from 'react-router-dom'
 import { cn } from '@/lib/cn'
 import { Logo } from '@/components/ui/Logo'
 import { StatusPill } from '@/components/ui/StatusPill'
 import { Button } from '@/components/ui/Button'
+import { Alert } from '@/components/ui/Alert'
 import { useAuth } from '@/features/auth/AuthProvider'
-import { ROLE_LABEL, type Role } from '@/lib/roles'
+import { ROLE_LABEL, isRole, type Role } from '@/lib/roles'
+import { LOGIN_ROLE_HINT_KEY } from '@/lib/roleMismatchNotice'
 
 export type NavItem = { to: string; label: string; end?: boolean }
 
 export const NAV_BY_ROLE: Record<Role, NavItem[]> = {
   student: [
     { to: '/student', label: 'My Dashboard', end: true },
+    { to: '/student/courses', label: 'My Courses' },
     { to: '/student/attendance', label: 'Attendance History' },
     { to: '/student/examinations', label: 'Examination Schedule' },
     { to: '/student/profile', label: 'My Profile' },
@@ -20,6 +23,7 @@ export const NAV_BY_ROLE: Record<Role, NavItem[]> = {
   staff: [
     { to: '/staff', label: 'My Dashboard', end: true },
     { to: '/staff/attendance', label: 'Attendance Scanning' },
+    { to: '/staff/records', label: 'Attendance Records' },
     { to: '/staff/verification', label: 'Exam Verification' },
     { to: '/staff/profile', label: 'My Profile' },
   ],
@@ -105,6 +109,22 @@ export function AppShell({ title, actions, children }: Props) {
     .map((part) => part[0]?.toUpperCase())
     .join('')
 
+  // Reads the role the user picked at login (if any) exactly once, on the
+  // first authenticated page they land on, then clears it — so this shows a
+  // single courtesy note per sign-in rather than persisting across every
+  // page visited afterwards.
+  const [roleMismatch, setRoleMismatch] = useState<Role | null>(null)
+  useEffect(() => {
+    if (!profile) return
+    const picked = sessionStorage.getItem(LOGIN_ROLE_HINT_KEY)
+    sessionStorage.removeItem(LOGIN_ROLE_HINT_KEY)
+    if (picked && isRole(picked) && picked !== profile.role) {
+      setRoleMismatch(picked)
+    }
+    // Only ever meant to fire once, right after the profile first loads.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [Boolean(profile)])
+
   return (
     <div className="min-h-dvh lg:grid lg:grid-cols-[15rem_1fr]">
       {/* Desktop rail */}
@@ -171,7 +191,25 @@ export function AppShell({ title, actions, children }: Props) {
           </div>
         </header>
 
-        <main className="flex-1 px-5 py-7 lg:px-8">{children}</main>
+        <main className="flex-1 px-5 py-7 lg:px-8">
+          {roleMismatch && (
+            <Alert
+              tone="azure"
+              className="mb-6"
+              title={`You selected ${ROLE_LABEL[roleMismatch]}, but this account is registered as ${ROLE_LABEL[role]} — you've been taken to the right place.`}
+              action={
+                <button
+                  aria-label="Dismiss"
+                  onClick={() => setRoleMismatch(null)}
+                  className="rounded-md px-2 py-1 text-lg leading-none text-azure-700 hover:bg-azure-100"
+                >
+                  ×
+                </button>
+              }
+            />
+          )}
+          {children}
+        </main>
       </div>
     </div>
   )

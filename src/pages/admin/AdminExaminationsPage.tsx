@@ -10,6 +10,7 @@ import { StatusPill } from '@/components/ui/StatusPill'
 import { supabase, friendlyError } from '@/lib/supabase'
 import { useAsync } from '@/lib/useAsync'
 import { formatClockTime, formatCompactDate } from '@/lib/format'
+import { SESSION_PERIOD_LABEL } from '@/lib/sessionPeriod'
 import { useAllCourses } from '@/features/admin/useAllCourses'
 import { useExaminations, type ExaminationRow } from '@/features/admin/useExaminations'
 import { CLEARANCE_PILL } from '@/features/student/clearance'
@@ -20,7 +21,6 @@ function NewExaminationForm({ onCreated }: { onCreated: () => void }) {
   const [courseId, setCourseId] = useState('')
   const [examDate, setExamDate] = useState('')
   const [examTime, setExamTime] = useState('09:00')
-  const [venue, setVenue] = useState('')
   const [semester, setSemester] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -28,8 +28,8 @@ function NewExaminationForm({ onCreated }: { onCreated: () => void }) {
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
     setError(null)
-    if (!courseId || !examDate || !examTime || !venue.trim()) {
-      setError('Fill in course, date, time and venue.')
+    if (!courseId || !examDate || !examTime) {
+      setError('Fill in course, date and time.')
       return
     }
     setSubmitting(true)
@@ -37,7 +37,10 @@ function NewExaminationForm({ onCreated }: { onCreated: () => void }) {
       course_id: courseId,
       exam_date: examDate,
       exam_time: examTime,
-      venue: venue.trim(),
+      // The invigilator sets these when they start verifying (spec follow-up)
+      // — they're the one actually in the room, not admin at scheduling time.
+      venue: null,
+      session_period: null,
       semester: semester.trim() || null,
       eligibility_criteria: null,
     })
@@ -48,7 +51,6 @@ function NewExaminationForm({ onCreated }: { onCreated: () => void }) {
     }
     setCourseId('')
     setExamDate('')
-    setVenue('')
     setSemester('')
     onCreated()
   }
@@ -56,6 +58,9 @@ function NewExaminationForm({ onCreated }: { onCreated: () => void }) {
   return (
     <Card>
       <p className="eyebrow text-ink-muted">Schedule Examination</p>
+      <p className="mt-1 text-xs text-ink-muted">
+        The classroom and morning/evening session are set by the invigilator when they start verifying.
+      </p>
       <form onSubmit={handleSubmit} noValidate className="mt-4 space-y-4">
         {error && <Alert tone="denied">{error}</Alert>}
 
@@ -73,7 +78,6 @@ function NewExaminationForm({ onCreated }: { onCreated: () => void }) {
           <Field label="Time" type="time" value={examTime} onChange={(event) => setExamTime(event.target.value)} />
         </div>
 
-        <Field label="Venue" placeholder="Hall C" value={venue} onChange={(event) => setVenue(event.target.value)} />
         <Field
           label="Semester"
           placeholder="Semester 2, 2025/2026"
@@ -166,7 +170,9 @@ function RegistrationsPanel({ exam, onExit }: { exam: ExaminationRow; onExit: ()
       <div className="rounded-xl bg-navy-900 p-5 text-white shadow-panel">
         <h2 className="font-display text-lg font-bold">{exam.course?.name ?? 'Examination'}</h2>
         <p className="data mt-1 text-xs text-azure-100/70">
-          {formatCompactDate(exam.exam_date)} · {formatClockTime(exam.exam_time)} · {exam.venue}
+          {formatCompactDate(exam.exam_date)} · {formatClockTime(exam.exam_time)}
+          {exam.session_period && ` · ${SESSION_PERIOD_LABEL[exam.session_period]} Session`}
+          {exam.venue ? ` · ${exam.venue}` : ' · Classroom not yet set'}
         </p>
       </div>
 
@@ -258,6 +264,43 @@ function RegistrationsPanel({ exam, onExit }: { exam: ExaminationRow; onExit: ()
 export function AdminExaminationsPage() {
   const examinations = useExaminations()
   const [selected, setSelected] = useState<ExaminationRow | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [deleteError, setDeleteError] = useState<{ id: string; message: string } | null>(null)
+
+  async function handleDelete(examId: string) {
+    setDeletingId(examId)
+    setDeleteError(null)
+
+    // exam_registrations and verification_logs both cascade-delete with the
+    // examination — fine for registrations, but verification_logs is the
+    // access audit trail, so once any scan has been logged the exam is kept
+    // rather than silently taking that history with it.
+    const { count, error: countError } = await supabase
+      .from('verification_logs')
+      .select('*', { count: 'exact', head: true })
+      .eq('examination_id', examId)
+    if (countError) {
+      setDeleteError({ id: examId, message: friendlyError(countError) })
+      setDeletingId(null)
+      return
+    }
+    if ((count ?? 0) > 0) {
+      setDeleteError({
+        id: examId,
+        message: `Cannot delete — ${count} verification${count === 1 ? '' : 's'} already logged for this exam.`,
+      })
+      setDeletingId(null)
+      return
+    }
+
+    const { error: deleteRowError } = await supabase.from('examinations').delete().eq('id', examId)
+    setDeletingId(null)
+    if (deleteRowError) {
+      setDeleteError({ id: examId, message: friendlyError(deleteRowError) })
+      return
+    }
+    examinations.reload()
+  }
 
   if (selected) {
     return (
@@ -288,19 +331,33 @@ export function AdminExaminationsPage() {
           ) : examinations.data && examinations.data.length > 0 ? (
             <ul>
               {examinations.data.map((exam) => (
-                <li
-                  key={exam.id}
-                  className="flex items-center justify-between gap-3 border-b border-line px-5 py-4 last:border-0"
-                >
-                  <div className="min-w-0">
-                    <p className="font-semibold text-navy-900">{exam.course?.name ?? 'Examination'}</p>
-                    <p className="data mt-0.5 text-xs text-ink-muted">
-                      {formatCompactDate(exam.exam_date)} · {formatClockTime(exam.exam_time)} · {exam.venue}
-                    </p>
+                <li key={exam.id} className="border-b border-line px-5 py-4 last:border-0">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="font-semibold text-navy-900">{exam.course?.name ?? 'Examination'}</p>
+                      <p className="data mt-0.5 text-xs text-ink-muted">
+                        {formatCompactDate(exam.exam_date)} · {formatClockTime(exam.exam_time)}
+                        {exam.session_period && ` · ${SESSION_PERIOD_LABEL[exam.session_period]}`}
+                        {exam.venue ? ` · ${exam.venue}` : ' · Classroom not yet set'}
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 gap-2">
+                      <Button size="sm" onClick={() => setSelected(exam)}>
+                        Manage →
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="danger"
+                        loading={deletingId === exam.id}
+                        onClick={() => void handleDelete(exam.id)}
+                      >
+                        Delete
+                      </Button>
+                    </div>
                   </div>
-                  <Button size="sm" onClick={() => setSelected(exam)} className="shrink-0">
-                    Manage →
-                  </Button>
+                  {deleteError?.id === exam.id && (
+                    <p className="mt-2 text-xs font-medium text-denied-600">{deleteError.message}</p>
+                  )}
                 </li>
               ))}
             </ul>

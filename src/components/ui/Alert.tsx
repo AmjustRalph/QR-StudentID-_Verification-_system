@@ -27,16 +27,16 @@ export function Alert({
     <div
       role={tone === 'denied' ? 'alert' : 'status'}
       className={cn(
-        'flex items-center justify-between gap-4 rounded-lg border px-4 py-3',
+        'flex flex-wrap items-center justify-between gap-3 rounded-lg border px-4 py-3',
         TONE[tone],
         className,
       )}
     >
-      <div className="min-w-0">
+      <div className="min-w-0 flex-1">
         {title && <p className="text-sm font-semibold">{title}</p>}
         {children && <div className="data mt-0.5 text-xs opacity-90">{children}</div>}
       </div>
-      {action}
+      {action && <div className="shrink-0">{action}</div>}
     </div>
   )
 }

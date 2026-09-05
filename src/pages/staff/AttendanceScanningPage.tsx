@@ -1,16 +1,19 @@
 import { useMemo, useState } from 'react'
+import type { FormEvent } from 'react'
 import { AppShell, PageHeading } from '@/components/layout/AppShell'
 import { Card, CardHeader, EmptyState } from '@/components/ui/Card'
 import { Alert } from '@/components/ui/Alert'
 import { Button } from '@/components/ui/Button'
 import { Field } from '@/components/ui/Field'
+import { Segmented } from '@/components/ui/Segmented'
 import { Spinner } from '@/components/ui/Spinner'
 import { StatusPill } from '@/components/ui/StatusPill'
 import { useAuth } from '@/features/auth/AuthProvider'
 import { supabase } from '@/lib/supabase'
 import { useAsync } from '@/lib/useAsync'
 import { formatTime } from '@/lib/format'
-import type { CourseRecord } from '@/lib/database.types'
+import { SESSION_PERIOD_LABEL, SESSION_PERIOD_OPTIONS } from '@/lib/sessionPeriod'
+import type { CourseRecord, SessionPeriod } from '@/lib/database.types'
 import { useQrScanner } from '@/features/scanning/useQrScanner'
 import { ScannerViewport } from '@/features/scanning/ScannerViewport'
 import { PhotoGlanceCard } from '@/features/scanning/PhotoGlanceCard'
@@ -133,10 +136,62 @@ function EndSessionPanel({
   )
 }
 
+function StartSessionForm({
+  courseName,
+  onStart,
+}: {
+  courseName: string
+  onStart: (venue: string, period: SessionPeriod) => Promise<void>
+}) {
+  const [venue, setVenue] = useState('')
+  const [period, setPeriod] = useState<SessionPeriod>('morning')
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function handleSubmit(event: FormEvent) {
+    event.preventDefault()
+    if (!venue.trim()) {
+      setError('Enter the classroom name.')
+      return
+    }
+    setSubmitting(true)
+    setError(null)
+    try {
+      await onStart(venue.trim(), period)
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Could not start the session.')
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <Card className="mx-auto max-w-md">
+      <p className="eyebrow text-ink-muted">Start Attendance Session</p>
+      <h2 className="mt-1 font-display text-lg font-bold text-navy-900">{courseName}</h2>
+      <form onSubmit={handleSubmit} noValidate className="mt-4 space-y-4">
+        {error && <Alert tone="denied">{error}</Alert>}
+        <Field
+          label="Classroom"
+          placeholder="e.g. Room 204, Lab 3"
+          value={venue}
+          onChange={(event) => setVenue(event.target.value)}
+        />
+        <Segmented label="Session" options={SESSION_PERIOD_OPTIONS} value={period} onChange={setPeriod} />
+        <Button type="submit" fullWidth loading={submitting}>
+          Start Session →
+        </Button>
+      </form>
+    </Card>
+  )
+}
+
 function ScanningSession({ course, onExit }: { course: CourseRecord; onExit: () => void }) {
   const { profile } = useAuth()
   const lecturerId = profile!.id
-  const { session, roster, loading, error, markPresent, endSession } = useAttendanceSession(course.id, lecturerId)
+  const { session, roster, loading, error, needsSetup, startSession, markPresent, endSession } = useAttendanceSession(
+    course.id,
+    lecturerId,
+  )
 
   const [lastScan, setLastScan] = useState<LastScan | null>(null)
   const [busy, setBusy] = useState(false)
@@ -180,7 +235,14 @@ function ScanningSession({ course, onExit }: { course: CourseRecord; onExit: () 
 
   const { videoRef, status, error: cameraError } = useQrScanner(
     (value) => void handleDecode(value),
-    { paused: busy || endingSession || Boolean(session?.ended_at) },
+    {
+      paused: busy || endingSession || Boolean(session?.ended_at),
+      // The scanner view (and its <video> element) only actually renders once
+      // setup is done and there's an open session — see the early returns
+      // below. Acquiring the camera any earlier attaches the stream to a
+      // <video> that doesn't exist yet, and it's never retried.
+      enabled: !loading && !needsSetup && Boolean(session) && !session?.ended_at,
+    },
   )
 
   const present = useMemo(() => roster.filter((r) => r.presentAt !== null).sort((a, b) => (b.presentAt ?? '').localeCompare(a.presentAt ?? '')), [roster])
@@ -208,10 +270,22 @@ function ScanningSession({ course, onExit }: { course: CourseRecord; onExit: () 
     )
   }
 
-  if (error || !session) {
+  if (error) {
     return (
       <Alert tone="denied" title="Could not start this session">
-        {error ?? 'Unknown error.'}
+        {error}
+      </Alert>
+    )
+  }
+
+  if (needsSetup) {
+    return <StartSessionForm courseName={course.name} onStart={startSession} />
+  }
+
+  if (!session) {
+    return (
+      <Alert tone="denied" title="Could not start this session">
+        Unknown error.
       </Alert>
     )
   }
@@ -243,7 +317,10 @@ function ScanningSession({ course, onExit }: { course: CourseRecord; onExit: () 
           <div>
             <h2 className="font-display text-lg font-bold">{course.name} — Lecture</h2>
             <p className="data mt-1 text-xs text-azure-100/70">
-              Session started {formatTime(session.started_at)} · Lect. {profile?.full_name}
+              Session started {formatTime(session.started_at)}
+              {session.venue && ` · ${session.venue}`}
+              {session.session_period && ` · ${SESSION_PERIOD_LABEL[session.session_period]} Session`}
+              {' · '}Lect. {profile?.full_name}
             </p>
           </div>
           <StatusPill tone="verified" dot className="shrink-0">

@@ -158,7 +158,7 @@ async function ensureExamination(courseId: string): Promise<string> {
     .eq('exam_date', dateStr)
     .maybeSingle()
   if (existing) {
-    console.log(`  · Examination for ${dateStr} at Hall C already exists — reusing it.`)
+    console.log(`  · Examination for ${dateStr} already exists — reusing it.`)
     return existing.id
   }
 
@@ -168,7 +168,10 @@ async function ensureExamination(courseId: string): Promise<string> {
       course_id: courseId,
       exam_date: dateStr,
       exam_time: '09:00:00',
-      venue: 'Hall C',
+      // Left unset on purpose: the invigilator fills these in when they start
+      // verifying, so the seeded exam exercises that flow instead of skipping it.
+      venue: null,
+      session_period: null,
       semester: 'Semester 2, 2025/2026',
       eligibility_criteria: null,
     })
@@ -176,7 +179,7 @@ async function ensureExamination(courseId: string): Promise<string> {
     .single()
   if (error) throw error
 
-  console.log(`  · Examination created for ${dateStr} at Hall C.`)
+  console.log(`  · Examination created for ${dateStr} (invigilator sets the classroom).`)
   return created.id
 }
 

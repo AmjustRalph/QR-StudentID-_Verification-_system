@@ -10,4 +10,10 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  server: {
+    // Lets a Cloudflare quick tunnel (npx cloudflared tunnel --url ...) reach
+    // this dev server for phone-camera testing — its hostname changes each
+    // run, so the whole subdomain is allowed rather than one fixed value.
+    allowedHosts: ['.trycloudflare.com'],
+  },
 })

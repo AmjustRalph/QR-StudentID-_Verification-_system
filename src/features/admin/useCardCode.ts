@@ -3,7 +3,7 @@ import { supabase } from '@/lib/supabase'
 
 type MintCardResponse = { code: string; kind: 'static' }
 
-/**
+/** 
  * Mints the permanent physical-card code for a student on demand (admin-only,
  * via mint-card-code). Deterministic — regenerating for the same student
  * always returns the same code, matching a reprinted card.

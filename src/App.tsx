@@ -8,12 +8,14 @@ import { ForgotPasswordPage } from '@/pages/auth/ForgotPasswordPage'
 import { ResetPasswordPage } from '@/pages/auth/ResetPasswordPage'
 
 import { StudentDashboardPage } from '@/pages/student/StudentDashboardPage'
+import { MyCoursesPage } from '@/pages/student/MyCoursesPage'
 import { AttendanceHistoryPage } from '@/pages/student/AttendanceHistoryPage'
 import { ExaminationSchedulePage } from '@/pages/student/ExaminationSchedulePage'
 import { StudentProfilePage } from '@/pages/student/StudentProfilePage'
 import { StaffDashboardPage } from '@/pages/staff/StaffDashboardPage'
 import { StaffProfilePage } from '@/pages/staff/StaffProfilePage'
 import { AttendanceScanningPage } from '@/pages/staff/AttendanceScanningPage'
+import { StaffAttendanceRecordsPage } from '@/pages/staff/StaffAttendanceRecordsPage'
 import { ExamVerificationPage } from '@/pages/staff/ExamVerificationPage'
 import { AdminDashboardPage } from '@/pages/admin/AdminDashboardPage'
 import { StudentManagementPage } from '@/pages/admin/StudentManagementPage'
@@ -48,6 +50,7 @@ export default function App() {
           {/* Student */}
           <Route element={<ProtectedRoute allow={['student']} />}>
             <Route path="/student" element={<StudentDashboardPage />} />
+            <Route path="/student/courses" element={<MyCoursesPage />} />
             <Route path="/student/attendance" element={<AttendanceHistoryPage />} />
             <Route path="/student/examinations" element={<ExaminationSchedulePage />} />
             <Route path="/student/profile" element={<StudentProfilePage />} />
@@ -57,6 +60,7 @@ export default function App() {
           <Route element={<ProtectedRoute allow={['staff']} />}>
             <Route path="/staff" element={<StaffDashboardPage />} />
             <Route path="/staff/attendance" element={<AttendanceScanningPage />} />
+            <Route path="/staff/records" element={<StaffAttendanceRecordsPage />} />
             <Route path="/staff/verification" element={<ExamVerificationPage />} />
             <Route path="/staff/profile" element={<StaffProfilePage />} />
           </Route>

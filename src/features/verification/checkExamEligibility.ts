@@ -2,7 +2,9 @@ import { supabase } from '@/lib/supabase'
 import { verifyScannedCode, type ScannedStudent } from '@/features/scanning/verifyScannedCode'
 
 export type EligibilityChecks = {
-  qrValid: boolean
+  /** null means "not cryptographically evaluated" — the offline ID-lookup
+   * path never checks a signature, only the two cached-data checks below. */
+  qrValid: boolean | null
   /** null means "not evaluated" — an earlier check already failed. */
   registered: boolean | null
   cleared: boolean | null

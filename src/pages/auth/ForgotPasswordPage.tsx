@@ -54,11 +54,11 @@ export function ForgotPasswordPage() {
         <form onSubmit={handleSubmit} noValidate className="space-y-4">
           {error && <Alert tone="denied">{error}</Alert>}
           <Field
-            label="Institutional Email"
+            label="Email"
             type="email"
             autoComplete="email"
             required
-            placeholder="yourname@gctu.edu.gh"
+            placeholder="you@example.com"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
           />

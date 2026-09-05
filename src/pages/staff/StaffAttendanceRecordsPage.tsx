@@ -1,16 +1,16 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { AppShell, PageHeading } from '@/components/layout/AppShell'
 import { Card, CardHeader, EmptyState } from '@/components/ui/Card'
 import { Alert } from '@/components/ui/Alert'
 import { Field, SelectField } from '@/components/ui/Field'
 import { Spinner } from '@/components/ui/Spinner'
 import { StatusPill } from '@/components/ui/StatusPill'
+import { useAuth } from '@/features/auth/AuthProvider'
 import { supabase } from '@/lib/supabase'
 import { useAsync } from '@/lib/useAsync'
 import { formatDate, formatTime } from '@/lib/format'
 import { SESSION_PERIOD_LABEL } from '@/lib/sessionPeriod'
-import { useAllCourses } from '@/features/admin/useAllCourses'
-import type { ScanSource, SessionPeriod } from '@/lib/database.types'
+import type { CourseRecord, ScanSource, SessionPeriod } from '@/lib/database.types'
 
 type SessionRow = {
   id: string
@@ -23,7 +23,6 @@ type SessionRow = {
   discrepancy_flag: boolean
   discrepancy_resolved: boolean
   course: { id: string; code: string; name: string } | null
-  lecturer: { full_name: string } | null
 }
 
 type AttendeeRow = {
@@ -99,21 +98,35 @@ function SessionAttendees({ sessionId }: { sessionId: string }) {
   )
 }
 
-export function AttendanceRecordsPage() {
-  const courses = useAllCourses()
+/**
+ * A lecturer's own view of who attended their classes — the same shape as
+ * the admin Attendance Records screen, but scoped to sessions they ran
+ * (existing RLS already restricts this; no policy change needed).
+ */
+export function StaffAttendanceRecordsPage() {
+  const { profile } = useAuth()
+  const userId = profile?.id ?? null
+
+  const courses = useAsync<CourseRecord[]>(async () => {
+    if (!userId) return []
+    const { data, error } = await supabase.from('courses').select('*').eq('lecturer_id', userId).order('code')
+    if (error) throw error
+    return data ?? []
+  }, [userId])
+
   const [courseId, setCourseId] = useState('')
   const [from, setFrom] = useState(defaultFrom())
   const [to, setTo] = useState(defaultTo())
   const [expanded, setExpanded] = useState<string | null>(null)
 
   const sessions = useAsync<SessionRow[]>(async () => {
+    if (!userId) return []
     let query = supabase
       .from('attendance_sessions')
       .select(
-        // attendance_sessions has two FKs into users (lecturer_id, resolved_by), so the
-        // embed must be disambiguated — plain `users(...)` is a PGRST201 ambiguity error.
-        'id, started_at, ended_at, venue, session_period, scanned_count, reported_headcount, discrepancy_flag, discrepancy_resolved, course:courses(id, code, name), lecturer:users!attendance_sessions_lecturer_id_fkey(full_name)',
+        'id, started_at, ended_at, venue, session_period, scanned_count, reported_headcount, discrepancy_flag, discrepancy_resolved, course:courses(id, code, name)',
       )
+      .eq('lecturer_id', userId)
       .gte('started_at', `${from}T00:00:00`)
       .lte('started_at', `${to}T23:59:59`)
       .order('started_at', { ascending: false })
@@ -123,21 +136,16 @@ export function AttendanceRecordsPage() {
     const { data, error } = await query
     if (error) throw error
     return (data ?? []) as unknown as SessionRow[]
-  }, [courseId, from, to])
-
-  const flaggedCount = useMemo(
-    () => sessions.data?.filter((s) => s.discrepancy_flag && !s.discrepancy_resolved).length ?? 0,
-    [sessions.data],
-  )
+  }, [userId, courseId, from, to])
 
   return (
     <AppShell title="Attendance Records">
-      <PageHeading title="Attendance Records" meta="Every session across every course" />
+      <PageHeading title="Attendance Records" meta="Every session you've run, across your courses" />
 
       <Card className="mb-6">
         <div className="grid gap-4 sm:grid-cols-3">
           <SelectField label="Course" value={courseId} onChange={(event) => setCourseId(event.target.value)}>
-            <option value="">All courses</option>
+            <option value="">All my courses</option>
             {courses.data?.map((course) => (
               <option key={course.id} value={course.id}>
                 {course.code} — {course.name}
@@ -150,16 +158,7 @@ export function AttendanceRecordsPage() {
       </Card>
 
       <Card flush>
-        <CardHeader
-          title={`${sessions.data?.length ?? 0} session${sessions.data?.length === 1 ? '' : 's'}`}
-          action={
-            flaggedCount > 0 && (
-              <StatusPill tone="pending">
-                {flaggedCount} unresolved flag{flaggedCount === 1 ? '' : 's'}
-              </StatusPill>
-            )
-          }
-        />
+        <CardHeader title={`${sessions.data?.length ?? 0} session${sessions.data?.length === 1 ? '' : 's'}`} />
         {sessions.loading ? (
           <div className="grid h-40 place-items-center text-azure-600">
             <Spinner className="h-5 w-5" />
@@ -181,7 +180,7 @@ export function AttendanceRecordsPage() {
                     <p className="data mt-0.5 text-xs text-ink-muted">
                       {formatDate(session.started_at)} {formatTime(session.started_at)}
                       {session.session_period && ` · ${SESSION_PERIOD_LABEL[session.session_period]}`}
-                      {session.venue && ` · ${session.venue}`} · Lect. {session.lecturer?.full_name ?? '—'}
+                      {session.venue && ` · ${session.venue}`}
                     </p>
                   </div>
                   <div className="flex shrink-0 items-center gap-3">

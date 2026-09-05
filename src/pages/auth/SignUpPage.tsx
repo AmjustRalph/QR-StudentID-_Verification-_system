@@ -112,10 +112,10 @@ export function SignUpPage() {
         />
 
         <Field
-          label="Institutional Email"
+          label="Email"
           type="email"
           autoComplete="email"
-          placeholder="yourname@gctu.edu.gh"
+          placeholder="you@example.com"
           value={values.email}
           error={errors.email}
           onChange={(event) => set('email', event.target.value)}

@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { AppShell, PageHeading } from '@/components/layout/AppShell'
 import { Card, CardHeader, EmptyState } from '@/components/ui/Card'
 import { Alert } from '@/components/ui/Alert'
@@ -79,7 +80,14 @@ export function StaffDashboardPage() {
         </Card>
 
         <Card flush>
-          <CardHeader title="Recent Sessions" />
+          <CardHeader
+            title="Recent Sessions"
+            action={
+              <Link to="/staff/records" className="text-sm font-semibold text-azure-600 hover:underline">
+                View all →
+              </Link>
+            }
+          />
           {sessions.loading ? (
             <div className="grid h-40 place-items-center text-azure-600">
               <Spinner className="h-5 w-5" />

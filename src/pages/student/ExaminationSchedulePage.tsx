@@ -9,13 +9,15 @@ import { CLEARANCE_PILL } from '@/features/student/clearance'
 import { supabase } from '@/lib/supabase'
 import { useAsync } from '@/lib/useAsync'
 import { formatClockTime, formatCompactDate } from '@/lib/format'
-import type { ClearanceStatus } from '@/lib/database.types'
+import { SESSION_PERIOD_LABEL } from '@/lib/sessionPeriod'
+import type { ClearanceStatus, SessionPeriod } from '@/lib/database.types'
 
 type ExamRow = {
   id: string
   exam_date: string
   exam_time: string
-  venue: string
+  venue: string | null
+  session_period: SessionPeriod | null
   semester: string | null
   course: { id: string; code: string; name: string } | null
   clearance: ClearanceStatus | null
@@ -33,7 +35,7 @@ export function ExaminationSchedulePage() {
 
     const { data, error } = await supabase
       .from('examinations')
-      .select('id, exam_date, exam_time, venue, semester, course:courses(id, code, name)')
+      .select('id, exam_date, exam_time, venue, session_period, semester, course:courses(id, code, name)')
       .in('course_id', courseIds)
       .order('exam_date', { ascending: true })
     if (error) throw error
@@ -86,7 +88,9 @@ export function ExaminationSchedulePage() {
                     <p className="font-semibold text-navy-900">{exam.course?.name ?? 'Examination'}</p>
                     <p className="data mt-0.5 text-xs text-ink-muted">{exam.course?.code}</p>
                     <p className="data mt-1 text-sm text-ink-muted">
-                      {formatCompactDate(exam.exam_date)} · {formatClockTime(exam.exam_time)} · {exam.venue}
+                      {formatCompactDate(exam.exam_date)} · {formatClockTime(exam.exam_time)}
+                      {exam.session_period && ` · ${SESSION_PERIOD_LABEL[exam.session_period]}`}
+                      {exam.venue ? ` · ${exam.venue}` : ' · Venue to be confirmed'}
                     </p>
                     {exam.semester && <p className="mt-0.5 text-xs text-ink-faint">{exam.semester}</p>}
                   </div>

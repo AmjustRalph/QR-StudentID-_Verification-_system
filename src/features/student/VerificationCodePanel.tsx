@@ -85,7 +85,7 @@ export function VerificationCodePanel({ student }: { student: StudentRecord }) {
           )}
         </div>
 
-        <p className="max-w-52 text-right text-xs leading-relaxed text-azure-100/50 sm:self-start">
+        <p className="text-xs leading-relaxed text-azure-100/50 sm:max-w-52 sm:self-start sm:text-right">
           For classroom use only. Physical card required for examinations.
         </p>
       </div>

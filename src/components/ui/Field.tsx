@@ -1,4 +1,4 @@
-import { useId } from 'react'
+import { useId, useState } from 'react'
 import type { InputHTMLAttributes, ReactNode, SelectHTMLAttributes } from 'react'
 import { cn } from '@/lib/cn'
 
@@ -42,23 +42,39 @@ type FieldProps = InputHTMLAttributes<HTMLInputElement> & {
   error?: string
 }
 
-export function Field({ label, hint, error, className, id, ...rest }: FieldProps) {
+export function Field({ label, hint, error, className, id, type, ...rest }: FieldProps) {
   const generated = useId()
   const inputId = id ?? generated
+  const [passwordVisible, setPasswordVisible] = useState(false)
+  const isPassword = type === 'password'
 
   return (
     <Wrapper id={inputId} label={label} hint={hint} error={error}>
-      <input
-        {...rest}
-        id={inputId}
-        aria-invalid={error ? true : undefined}
-        aria-describedby={error ? `${inputId}-error` : undefined}
-        className={cn(
-          CONTROL,
-          error ? 'border-denied-600' : 'border-line-strong focus:border-azure-600',
-          className,
+      <div className="relative">
+        <input
+          {...rest}
+          type={isPassword && passwordVisible ? 'text' : type}
+          id={inputId}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={error ? `${inputId}-error` : undefined}
+          className={cn(
+            CONTROL,
+            isPassword && 'pr-14',
+            error ? 'border-denied-600' : 'border-line-strong focus:border-azure-600',
+            className,
+          )}
+        />
+        {isPassword && (
+          <button
+            type="button"
+            onClick={() => setPasswordVisible((visible) => !visible)}
+            aria-label={passwordVisible ? 'Hide password' : 'Show password'}
+            className="absolute inset-y-0 right-0 flex items-center px-3 text-xs font-semibold text-azure-600 hover:text-azure-700"
+          >
+            {passwordVisible ? 'Hide' : 'Show'}
+          </button>
         )}
-      />
+      </div>
     </Wrapper>
   )
 }

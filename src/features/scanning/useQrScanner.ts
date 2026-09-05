@@ -8,6 +8,16 @@ type Options = {
   paused?: boolean
   /** Minimum time before the same decoded value is allowed to fire again. */
   cooldownMs?: number
+  /**
+   * Set false to defer camera acquisition entirely — e.g. while a
+   * prerequisite form is showing and the <video> element this hook attaches
+   * to isn't mounted yet. Acquisition only happens once, on mount, keyed off
+   * this flag; if the caller renders the video element conditionally (as the
+   * scanning screens do while collecting session details first), leaving
+   * this true from the start attaches the stream to nothing and it never
+   * retries. Flip it to true once the real scanning view is on screen.
+   */
+  enabled?: boolean
 }
 
 /**
@@ -17,7 +27,7 @@ type Options = {
  * every tick — the caller still gets exactly one call per physical presentation.
  */
 export function useQrScanner(onDecode: (value: string) => void, options: Options = {}) {
-  const { paused = false, cooldownMs = 2500 } = options
+  const { paused = false, cooldownMs = 2500, enabled = true } = options
 
   const videoRef = useRef<HTMLVideoElement>(null)
   const [status, setStatus] = useState<ScannerStatus>('starting')
@@ -30,6 +40,8 @@ export function useQrScanner(onDecode: (value: string) => void, options: Options
   const lastRef = useRef<{ value: string; at: number } | null>(null)
 
   useEffect(() => {
+    if (!enabled) return
+
     let cancelled = false
     let stream: MediaStream | null = null
     let frameHandle: number | null = null
@@ -97,7 +109,7 @@ export function useQrScanner(onDecode: (value: string) => void, options: Options
     // cooldownMs intentionally excluded: changing it mid-session would tear
     // down and restart the camera stream for no benefit.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [enabled])
 
   return { videoRef, status, error }
 }

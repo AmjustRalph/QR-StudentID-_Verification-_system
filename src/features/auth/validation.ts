@@ -3,9 +3,6 @@
  * one place and can be reused by the admin's Student Management screen later.
  */
 
-/** Change this single constant to open signup to another domain (spec §2). */
-export const INSTITUTIONAL_DOMAIN = 'gctu.edu.gh'
-
 export const LEVELS = [100, 200, 300, 400] as const
 
 export const PROGRAMMES = [
@@ -41,10 +38,10 @@ export function validateSignUp(values: SignUpValues): SignUpErrors {
     errors.fullName = 'Enter your full name as it appears on your student record.'
   }
 
+  // Any valid email is accepted at signup — not every student has an
+  // institutional address yet, so this is deliberately not restricted to one.
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     errors.email = 'Enter a valid email address.'
-  } else if (!email.endsWith(`@${INSTITUTIONAL_DOMAIN}`)) {
-    errors.email = `Use your institutional email (@${INSTITUTIONAL_DOMAIN}).`
   }
 
   if (!STUDENT_ID_PATTERN.test(values.studentIdNumber.trim().toUpperCase())) {

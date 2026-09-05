@@ -16,6 +16,7 @@ export type ScanSource = 'physical_card' | 'digital_display' | 'manual'
 export type AttendanceStatus = 'present'
 export type VerificationOutcome = 'granted' | 'denied'
 export type ClearanceStatus = 'cleared' | 'pending_fees' | 'blocked'
+export type SessionPeriod = 'morning' | 'evening'
 
 type Table<Row, Insert = Partial<Row>, Update = Partial<Row>> = {
   Row: Row
@@ -72,6 +73,8 @@ export type AttendanceSessionRecord = {
   lecturer_id: string
   started_at: string
   ended_at: string | null
+  venue: string | null
+  session_period: SessionPeriod | null
   scanned_count: number
   reported_headcount: number | null
   discrepancy_flag: boolean
@@ -95,7 +98,9 @@ export type ExaminationRecord = {
   course_id: string
   exam_date: string
   exam_time: string
-  venue: string
+  /** Set by the invigilator when they start verifying (spec follow-up), not admin at scheduling time. */
+  venue: string | null
+  session_period: SessionPeriod | null
   semester: string | null
   eligibility_criteria: string | null
   created_at: string
@@ -163,6 +168,7 @@ export type Database = {
       attendance_status: AttendanceStatus
       verification_outcome: VerificationOutcome
       clearance_status: ClearanceStatus
+      session_period: SessionPeriod
     }
   }
 }

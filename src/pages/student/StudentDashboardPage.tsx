@@ -24,7 +24,7 @@ type UpcomingExam = {
   id: string
   exam_date: string
   exam_time: string
-  venue: string
+  venue: string | null
   course: { code: string; name: string } | null
   clearance: ClearanceStatus | null
 }
@@ -206,7 +206,7 @@ export function StudentDashboardPage() {
                       </p>
                       <p className="data mt-0.5 text-xs text-ink-muted">
                         {formatCompactDate(exam.exam_date)} · {formatClockTime(exam.exam_time)} ·{' '}
-                        {exam.venue}
+                        {exam.venue ?? 'Venue TBC'}
                       </p>
                     </div>
                     {pill ? (
