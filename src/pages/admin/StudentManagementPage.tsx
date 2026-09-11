@@ -14,6 +14,7 @@ import { cn } from '@/lib/cn'
 import { useAllCourses } from '@/features/admin/useAllCourses'
 import { useCardCode } from '@/features/admin/useCardCode'
 import { CoursesPanel } from '@/features/admin/CoursesPanel'
+import { PrintCardOverlay } from '@/components/print/PrintCardOverlay'
 import type { StudentRecord } from '@/lib/database.types'
 
 function initials(name: string): string {
@@ -108,8 +109,10 @@ function StudentDetail({
   const [statusError, setStatusError] = useState<string | null>(null)
 
   const card = useCardCode()
+  const [showPrintCard, setShowPrintCard] = useState(false)
   useEffect(() => {
     card.reset()
+    setShowPrintCard(false)
     // Only reset when the selected student changes, not on every card state update.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [student.id])
@@ -245,21 +248,30 @@ function StudentDetail({
         )}
 
         {card.code ? (
-          <div className="mt-4 flex items-center gap-4">
-            <Reticle tone="navy" size="sm">
-              <QrCode value={card.code} className="h-32 w-32" />
-            </Reticle>
-            <p className="text-xs text-ink-muted">
-              Scan this with a phone or point a scanning device's camera at it to test the physical-card path
-              in Attendance Scanning or Exam Verification.
-            </p>
-          </div>
+          <>
+            <div className="mt-4 flex items-center gap-4">
+              <Reticle tone="navy" size="sm">
+                <QrCode value={card.code} className="h-32 w-32" />
+              </Reticle>
+              <p className="text-xs text-ink-muted">
+                Scan this with a phone or point a scanning device's camera at it to test the physical-card path
+                in Attendance Scanning or Exam Verification.
+              </p>
+            </div>
+            <Button className="mt-4" variant="secondary" onClick={() => setShowPrintCard(true)}>
+              Print ID Card →
+            </Button>
+          </>
         ) : (
           <Button className="mt-4" loading={card.loading} onClick={() => void card.generate(student.id)}>
             Generate Card Code
           </Button>
         )}
       </Card>
+
+      {showPrintCard && card.code && (
+        <PrintCardOverlay student={student} cardCode={card.code} onClose={() => setShowPrintCard(false)} />
+      )}
     </div>
   )
 }

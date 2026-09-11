@@ -4,12 +4,12 @@ import { AppShell, PageHeading } from '@/components/layout/AppShell'
 import { Card, CardHeader, EmptyState } from '@/components/ui/Card'
 import { Alert } from '@/components/ui/Alert'
 import { Button } from '@/components/ui/Button'
-import { Field } from '@/components/ui/Field'
+import { Field, SelectField } from '@/components/ui/Field'
 import { Segmented } from '@/components/ui/Segmented'
 import { Spinner } from '@/components/ui/Spinner'
 import { StatusPill, type PillTone } from '@/components/ui/StatusPill'
 import { useAuth } from '@/features/auth/AuthProvider'
-import { supabase } from '@/lib/supabase'
+import { supabase, friendlyError } from '@/lib/supabase'
 import { useAsync } from '@/lib/useAsync'
 import { useOnlineStatus } from '@/lib/useOnlineStatus'
 import { useOfflineQueue } from '@/lib/useOfflineQueue'
@@ -21,7 +21,7 @@ import { PhotoGlanceCard } from '@/features/scanning/PhotoGlanceCard'
 import { denialLabel, type ScannedStudent } from '@/features/scanning/verifyScannedCode'
 import { checkExamEligibility, type EligibilityResult } from '@/features/verification/checkExamEligibility'
 import { SESSION_PERIOD_LABEL, SESSION_PERIOD_OPTIONS } from '@/lib/sessionPeriod'
-import type { ClearanceStatus, SessionPeriod, StudentStatus } from '@/lib/database.types'
+import type { ClearanceStatus, CourseRecord, ExaminationKind, SessionPeriod, StudentStatus } from '@/lib/database.types'
 
 type Examination = {
   id: string
@@ -30,6 +30,9 @@ type Examination = {
   /** Set by the invigilator when they start verifying, not admin at scheduling time. */
   venue: string | null
   session_period: SessionPeriod | null
+  /** 'exam' (admin-scheduled, full registration+clearance flow) vs a
+   * lecturer-scheduled 'quiz'/'test' (identity-only, no admin needed). */
+  kind: ExaminationKind
   course: { id: string; code: string; name: string } | null
 }
 
@@ -67,24 +70,110 @@ type QueuedDecision = {
   reason: string | null
 }
 
+const KIND_LABEL: Record<ExaminationKind, string> = { exam: 'Exam', quiz: 'Quiz', test: 'Test' }
+const KIND_TONE: Record<ExaminationKind, PillTone> = { exam: 'azure', quiz: 'verified', test: 'pending' }
+
 function venueLabel(exam: Pick<Examination, 'venue' | 'session_period'>): string {
   const period = exam.session_period ? `${SESSION_PERIOD_LABEL[exam.session_period]} · ` : ''
   return exam.venue ? `${period}${exam.venue}` : `${period}Classroom not yet set`
 }
 
-function ExaminationPicker({ onSelect }: { onSelect: (exam: Examination) => void }) {
-  const exams = useAsync<Examination[]>(async () => {
-    const today = new Date().toISOString().slice(0, 10)
-    const { data, error } = await supabase
-      .from('examinations')
-      .select('id, exam_date, exam_time, venue, session_period, course:courses(id, code, name)')
-      .gte('exam_date', today)
-      .order('exam_date', { ascending: true })
-      .limit(20)
-    if (error) throw error
-    return (data ?? []) as unknown as Examination[]
-  }, [])
+function ScheduleQuizForm({ onCreated }: { onCreated: () => void }) {
+  const { profile } = useAuth()
+  const userId = profile?.id ?? null
 
+  const courses = useAsync<CourseRecord[]>(async () => {
+    if (!userId) return []
+    const { data, error } = await supabase.from('courses').select('*').eq('lecturer_id', userId).order('code')
+    if (error) throw error
+    return data ?? []
+  }, [userId])
+
+  const [courseId, setCourseId] = useState('')
+  const [examDate, setExamDate] = useState('')
+  const [examTime, setExamTime] = useState('09:00')
+  const [kind, setKind] = useState<'quiz' | 'test'>('quiz')
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function handleSubmit(event: FormEvent) {
+    event.preventDefault()
+    setError(null)
+    if (!courseId || !examDate || !examTime) {
+      setError('Fill in course, date and time.')
+      return
+    }
+    setSubmitting(true)
+    const { error: insertError } = await supabase.from('examinations').insert({
+      course_id: courseId,
+      exam_date: examDate,
+      exam_time: examTime,
+      // Same as a formal exam: the room gets set at verification time, not here.
+      venue: null,
+      session_period: null,
+      kind,
+      semester: null,
+      eligibility_criteria: null,
+    })
+    setSubmitting(false)
+    if (insertError) {
+      setError(friendlyError(insertError))
+      return
+    }
+    setCourseId('')
+    setExamDate('')
+    onCreated()
+  }
+
+  return (
+    <Card>
+      <p className="eyebrow text-ink-muted">Schedule Quiz / Test</p>
+      <p className="mt-1 text-xs text-ink-muted">
+        For one of your own courses — no admin needed. Students just scan in, either code works, and there's no
+        registration or clearance check.
+      </p>
+      <form onSubmit={handleSubmit} noValidate className="mt-4 space-y-4">
+        {error && <Alert tone="denied">{error}</Alert>}
+
+        <SelectField label="Course" value={courseId} onChange={(event) => setCourseId(event.target.value)}>
+          <option value="">Select one of your courses</option>
+          {courses.data?.map((course) => (
+            <option key={course.id} value={course.id}>
+              {course.code} — {course.name}
+            </option>
+          ))}
+        </SelectField>
+
+        <div className="grid grid-cols-2 gap-4">
+          <Field label="Date" type="date" value={examDate} onChange={(event) => setExamDate(event.target.value)} />
+          <Field label="Time" type="time" value={examTime} onChange={(event) => setExamTime(event.target.value)} />
+        </div>
+
+        <Segmented
+          label="Type"
+          options={[
+            { value: 'quiz', label: 'Quiz' },
+            { value: 'test', label: 'Test' },
+          ]}
+          value={kind}
+          onChange={setKind}
+        />
+
+        <Button type="submit" fullWidth loading={submitting}>
+          Schedule →
+        </Button>
+      </form>
+    </Card>
+  )
+}
+
+function ExaminationPicker({
+  exams,
+  onSelect,
+}: {
+  exams: ReturnType<typeof useAsync<Examination[]>>
+  onSelect: (exam: Examination) => void
+}) {
   return (
     <Card flush>
       <CardHeader title="Select an Examination" />
@@ -101,7 +190,12 @@ function ExaminationPicker({ onSelect }: { onSelect: (exam: Examination) => void
           {exams.data.map((exam) => (
             <li key={exam.id} className="flex items-center justify-between gap-3 border-b border-line px-5 py-4 last:border-0">
               <div className="min-w-0">
-                <p className="font-semibold text-navy-900">{exam.course?.name ?? 'Examination'}</p>
+                <div className="flex items-center gap-2">
+                  <p className="truncate font-semibold text-navy-900">{exam.course?.name ?? 'Examination'}</p>
+                  <StatusPill tone={KIND_TONE[exam.kind]} className="shrink-0">
+                    {KIND_LABEL[exam.kind]}
+                  </StatusPill>
+                </div>
                 <p className="data mt-0.5 text-xs text-ink-muted">
                   {formatCompactDate(exam.exam_date)} · {formatClockTime(exam.exam_time)} · {venueLabel(exam)}
                 </p>
@@ -114,8 +208,8 @@ function ExaminationPicker({ onSelect }: { onSelect: (exam: Examination) => void
         </ul>
       ) : (
         <EmptyState
-          title="No examinations scheduled"
-          description="An administrator needs to schedule an examination before you can run verification."
+          title="Nothing scheduled"
+          description="An administrator schedules formal exams — or schedule your own quiz or test on the left."
         />
       )}
     </Card>
@@ -135,8 +229,9 @@ function CheckChip({ label, state }: { label: string; state: boolean | null }) {
  * (c), just sourced from the cached roster instead of a live query. Check (a)
  * is reported as null (not evaluated) rather than true — offline, identity is
  * established by the invigilator visually matching the physical card, not by
- * verifying a signature. */
-function evaluateFromCache(student: CachedStudent): EligibilityResult {
+ * verifying a signature. A quiz/test skips (b) and (c) entirely — any
+ * enrolled student in the roster qualifies. */
+function evaluateFromCache(student: CachedStudent, kind: ExaminationKind): EligibilityResult {
   const scanned: ScannedStudent = {
     id: student.id,
     full_name: student.full_name,
@@ -145,6 +240,10 @@ function evaluateFromCache(student: CachedStudent): EligibilityResult {
     level: student.level,
     photo_url: student.photo_url,
     status: student.status,
+  }
+
+  if (kind !== 'exam') {
+    return { outcome: 'granted', student: scanned, checks: { qrValid: null, registered: null, cleared: null } }
   }
 
   if (!student.isRegistered) {
@@ -287,6 +386,7 @@ function VerificationSession({ exam: initialExam, onExit }: { exam: Examination;
   const online = useOnlineStatus()
   const [exam, setExam] = useState(initialExam)
   const needsClassroomSetup = !exam.venue || !exam.session_period
+  const isFormalExam = exam.kind === 'exam'
 
   const roster = useExamRoster(exam.id, exam.course?.id)
   const queue = useOfflineQueue<QueuedDecision>(`qrsidvs:offline-verifications:${exam.id}`)
@@ -302,7 +402,7 @@ function VerificationSession({ exam: initialExam, onExit }: { exam: Examination;
       .from('examinations')
       .update({ venue, session_period: period })
       .eq('id', exam.id)
-      .select('id, exam_date, exam_time, venue, session_period, course:courses(id, code, name)')
+      .select('id, exam_date, exam_time, venue, session_period, kind, course:courses(id, code, name)')
       .single()
     if (error) throw error
     setExam(data as unknown as Examination)
@@ -312,7 +412,7 @@ function VerificationSession({ exam: initialExam, onExit }: { exam: Examination;
     if (busy) return
     setBusy(true)
     try {
-      const outcome = await checkExamEligibility(raw, exam.id)
+      const outcome = await checkExamEligibility(raw, exam.id, exam.kind)
       setResult(outcome)
 
       const { error } = await supabase.from('verification_logs').insert({
@@ -358,7 +458,7 @@ function VerificationSession({ exam: initialExam, onExit }: { exam: Examination;
   })
 
   function handleOfflineDecision(student: CachedStudent) {
-    const evaluated = evaluateFromCache(student)
+    const evaluated = evaluateFromCache(student, exam.kind)
     const queueId = queue.enqueue({
       studentId: student.id,
       fullName: student.full_name,
@@ -429,7 +529,12 @@ function VerificationSession({ exam: initialExam, onExit }: { exam: Examination;
   return (
     <div className="space-y-6">
       <div className="rounded-xl bg-navy-900 p-5 text-white shadow-panel">
-        <h2 className="font-display text-lg font-bold">{exam.course?.name ?? 'Examination'}</h2>
+        <div className="flex flex-wrap items-center gap-2">
+          <h2 className="font-display text-lg font-bold">{exam.course?.name ?? 'Examination'}</h2>
+          <StatusPill tone={KIND_TONE[exam.kind]} className="shrink-0">
+            {KIND_LABEL[exam.kind]}
+          </StatusPill>
+        </div>
         <p className="data mt-1 text-xs text-azure-100/70">
           {venueLabel(exam)} · Invig. {profile?.full_name}
         </p>
@@ -455,14 +560,23 @@ function VerificationSession({ exam: initialExam, onExit }: { exam: Examination;
 
       <div className="flex flex-wrap gap-2">
         <CheckChip label={online ? 'QR Valid' : 'ID Lookup'} state={result?.checks.qrValid ?? null} />
-        <CheckChip label="Registered" state={result?.checks.registered ?? null} />
-        <CheckChip label="Cleared" state={result?.checks.cleared ?? null} />
+        {isFormalExam && (
+          <>
+            <CheckChip label="Registered" state={result?.checks.registered ?? null} />
+            <CheckChip label="Cleared" state={result?.checks.cleared ?? null} />
+          </>
+        )}
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[1fr_1.2fr]">
         <div className="space-y-4">
           {online ? (
-            <ScannerViewport videoRef={videoRef} status={status} error={cameraError} caption="Present ID card or phone code" />
+            <ScannerViewport
+              videoRef={videoRef}
+              status={status}
+              error={cameraError}
+              caption={isFormalExam ? 'Present physical ID card' : 'Present ID card or phone code'}
+            />
           ) : (
             <Card>
               <p className="eyebrow text-pending-600">Offline — verify by Student ID</p>
@@ -488,7 +602,7 @@ function VerificationSession({ exam: initialExam, onExit }: { exam: Examination;
               ) : matches.length > 0 ? (
                 <div className="mt-3 space-y-2">
                   {matches.map((student) => {
-                    const willGrant = student.isRegistered && student.clearance === 'cleared'
+                    const willGrant = !isFormalExam || (student.isRegistered && student.clearance === 'cleared')
                     return (
                       <button
                         key={student.id}
@@ -599,13 +713,32 @@ function VerificationSession({ exam: initialExam, onExit }: { exam: Examination;
 export function ExamVerificationPage() {
   const [exam, setExam] = useState<Examination | null>(null)
 
+  const exams = useAsync<Examination[]>(async () => {
+    const today = new Date().toISOString().slice(0, 10)
+    const { data, error } = await supabase
+      .from('examinations')
+      .select('id, exam_date, exam_time, venue, session_period, kind, course:courses(id, code, name)')
+      .gte('exam_date', today)
+      .order('exam_date', { ascending: true })
+      .limit(20)
+    if (error) throw error
+    return (data ?? []) as unknown as Examination[]
+  }, [])
+
   return (
     <AppShell title="Examination Verification">
       <PageHeading
         title={exam ? exam.course?.name ?? 'Examination' : 'Select an Examination'}
-        meta={exam ? formatCompactDate(exam.exam_date) : 'Choose which examination you are invigilating'}
+        meta={exam ? formatCompactDate(exam.exam_date) : 'Choose or schedule what you are invigilating'}
       />
-      {exam ? <VerificationSession exam={exam} onExit={() => setExam(null)} /> : <ExaminationPicker onSelect={setExam} />}
+      {exam ? (
+        <VerificationSession exam={exam} onExit={() => setExam(null)} />
+      ) : (
+        <div className="grid gap-6 lg:grid-cols-[1fr_1.4fr]">
+          <ScheduleQuizForm onCreated={() => exams.reload()} />
+          <ExaminationPicker exams={exams} onSelect={setExam} />
+        </div>
+      )}
     </AppShell>
   )
 }

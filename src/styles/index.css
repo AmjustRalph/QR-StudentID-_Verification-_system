@@ -119,3 +119,88 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   Printable student ID card (CR80 size, 85.6mm x 54mm).
+   PrintCardOverlay renders through a portal into #print-portal (a sibling of
+   #root, outside the React tree — see index.html), specifically so #root can
+   just be hidden outright below rather than hidden-but-still-occupying-space
+   via `visibility` — that earlier approach left the whole dashboard behind
+   the overlay (nav, sidebar, page content) taking up real page height above
+   the card, pushing the actual printed pages down by however many blank
+   pages that invisible content amounted to.
+--------------------------------------------------------------------------- */
+/* Extra print copies: invisible in the on-screen preview (so it isn't
+   cluttered with 8 cards), but folded back into normal flow for printing —
+   `display: contents` drops the wrapper's own box while keeping its
+   `.id-card-page` children as ordinary siblings, so pagination still works. */
+.id-card-print-only {
+  display: none;
+}
+
+@media print {
+  .id-card-print-only {
+    display: contents;
+  }
+
+  #root {
+    display: none !important;
+  }
+
+  #id-card-print-root * {
+    /* Chrome/Firefox drop background colours on print by default (even with
+       the "Background graphics" option off) — this is what made the navy
+       header/footer bands disappear. Forcing it here, on every element
+       inside the card, is the fix; the inline style on the bands themselves
+       is a second layer of the same fix for engines that only honour it
+       set directly on the coloured element. */
+    print-color-adjust: exact !important;
+    -webkit-print-color-adjust: exact !important;
+  }
+
+  /* `position: fixed` boxes are repeated on EVERY generated page per the CSS
+     Paged Media spec — that's what corrupted the two-page print (front/back
+     content bled into and repeated across both pages). The overlay backdrop
+     and the print root both need to be pinned back to normal flow so the
+     `break-after: page` below can paginate them cleanly instead. */
+  .id-card-overlay,
+  #id-card-print-root {
+    position: static !important;
+    inset: auto !important;
+  }
+
+  .id-card-overlay {
+    /* The dark screen backdrop (bg-navy-950/70) is now full page width but
+       the card is centred and narrower, so without this the tint shows up
+       as a solid navy bar down the side of every printed page. */
+    background: #fff !important;
+    padding: 0 !important;
+  }
+
+  #id-card-print-root {
+    background: #fff;
+    display: block !important;
+    width: fit-content;
+  }
+
+  .id-card-page {
+    break-after: page;
+    page-break-after: always;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .id-card-page:last-child {
+    break-after: auto;
+    page-break-after: auto;
+  }
+
+  .id-card-no-print {
+    display: none !important;
+  }
+
+  @page {
+    size: 85.6mm 54mm;
+    margin: 0;
+  }
+}

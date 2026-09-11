@@ -2,7 +2,7 @@ import { AppShell, PageHeading } from '@/components/layout/AppShell'
 import { Card, CardHeader, EmptyState } from '@/components/ui/Card'
 import { Alert } from '@/components/ui/Alert'
 import { Spinner } from '@/components/ui/Spinner'
-import { StatusPill } from '@/components/ui/StatusPill'
+import { StatusPill, type PillTone } from '@/components/ui/StatusPill'
 import { useStudentRecord } from '@/features/student/useStudentRecord'
 import { useEnrolledCourses } from '@/features/student/useEnrolledCourses'
 import { CLEARANCE_PILL } from '@/features/student/clearance'
@@ -10,7 +10,10 @@ import { supabase } from '@/lib/supabase'
 import { useAsync } from '@/lib/useAsync'
 import { formatClockTime, formatCompactDate } from '@/lib/format'
 import { SESSION_PERIOD_LABEL } from '@/lib/sessionPeriod'
-import type { ClearanceStatus, SessionPeriod } from '@/lib/database.types'
+import type { ClearanceStatus, ExaminationKind, SessionPeriod } from '@/lib/database.types'
+
+const KIND_LABEL: Record<ExaminationKind, string> = { exam: 'Exam', quiz: 'Quiz', test: 'Test' }
+const KIND_TONE: Record<ExaminationKind, PillTone> = { exam: 'azure', quiz: 'verified', test: 'pending' }
 
 type ExamRow = {
   id: string
@@ -18,6 +21,7 @@ type ExamRow = {
   exam_time: string
   venue: string | null
   session_period: SessionPeriod | null
+  kind: ExaminationKind
   semester: string | null
   course: { id: string; code: string; name: string } | null
   clearance: ClearanceStatus | null
@@ -35,7 +39,7 @@ export function ExaminationSchedulePage() {
 
     const { data, error } = await supabase
       .from('examinations')
-      .select('id, exam_date, exam_time, venue, session_period, semester, course:courses(id, code, name)')
+      .select('id, exam_date, exam_time, venue, session_period, kind, semester, course:courses(id, code, name)')
       .in('course_id', courseIds)
       .order('exam_date', { ascending: true })
     if (error) throw error
@@ -85,7 +89,12 @@ export function ExaminationSchedulePage() {
                   className="flex items-start justify-between gap-4 border-b border-line px-5 py-4 last:border-0"
                 >
                   <div className="min-w-0">
-                    <p className="font-semibold text-navy-900">{exam.course?.name ?? 'Examination'}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="truncate font-semibold text-navy-900">{exam.course?.name ?? 'Examination'}</p>
+                      <StatusPill tone={KIND_TONE[exam.kind]} className="shrink-0">
+                        {KIND_LABEL[exam.kind]}
+                      </StatusPill>
+                    </div>
                     <p className="data mt-0.5 text-xs text-ink-muted">{exam.course?.code}</p>
                     <p className="data mt-1 text-sm text-ink-muted">
                       {formatCompactDate(exam.exam_date)} · {formatClockTime(exam.exam_time)}
@@ -95,7 +104,9 @@ export function ExaminationSchedulePage() {
                     {exam.semester && <p className="mt-0.5 text-xs text-ink-faint">{exam.semester}</p>}
                   </div>
                   <div className="flex shrink-0 flex-col items-end gap-1.5">
-                    {!exam.registered ? (
+                    {exam.kind !== 'exam' ? (
+                      <StatusPill tone="neutral">No Registration Needed</StatusPill>
+                    ) : !exam.registered ? (
                       <StatusPill tone="neutral">Not Registered</StatusPill>
                     ) : pill ? (
                       <StatusPill tone={pill.tone}>{pill.label}</StatusPill>

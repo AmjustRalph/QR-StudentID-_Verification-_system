@@ -6,7 +6,7 @@ import { Alert } from '@/components/ui/Alert'
 import { Button } from '@/components/ui/Button'
 import { Field, SelectField } from '@/components/ui/Field'
 import { Spinner } from '@/components/ui/Spinner'
-import { StatusPill } from '@/components/ui/StatusPill'
+import { StatusPill, type PillTone } from '@/components/ui/StatusPill'
 import { supabase, friendlyError } from '@/lib/supabase'
 import { useAsync } from '@/lib/useAsync'
 import { formatClockTime, formatCompactDate } from '@/lib/format'
@@ -14,7 +14,10 @@ import { SESSION_PERIOD_LABEL } from '@/lib/sessionPeriod'
 import { useAllCourses } from '@/features/admin/useAllCourses'
 import { useExaminations, type ExaminationRow } from '@/features/admin/useExaminations'
 import { CLEARANCE_PILL } from '@/features/student/clearance'
-import type { ClearanceStatus } from '@/lib/database.types'
+import type { ClearanceStatus, ExaminationKind } from '@/lib/database.types'
+
+const KIND_LABEL: Record<ExaminationKind, string> = { exam: 'Exam', quiz: 'Quiz', test: 'Test' }
+const KIND_TONE: Record<ExaminationKind, PillTone> = { exam: 'azure', quiz: 'verified', test: 'pending' }
 
 function NewExaminationForm({ onCreated }: { onCreated: () => void }) {
   const courses = useAllCourses()
@@ -41,6 +44,7 @@ function NewExaminationForm({ onCreated }: { onCreated: () => void }) {
       // — they're the one actually in the room, not admin at scheduling time.
       venue: null,
       session_period: null,
+      kind: 'exam',
       semester: semester.trim() || null,
       eligibility_criteria: null,
     })
@@ -334,7 +338,12 @@ export function AdminExaminationsPage() {
                 <li key={exam.id} className="border-b border-line px-5 py-4 last:border-0">
                   <div className="flex items-center justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="font-semibold text-navy-900">{exam.course?.name ?? 'Examination'}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="truncate font-semibold text-navy-900">{exam.course?.name ?? 'Examination'}</p>
+                        <StatusPill tone={KIND_TONE[exam.kind]} className="shrink-0">
+                          {KIND_LABEL[exam.kind]}
+                        </StatusPill>
+                      </div>
                       <p className="data mt-0.5 text-xs text-ink-muted">
                         {formatCompactDate(exam.exam_date)} · {formatClockTime(exam.exam_time)}
                         {exam.session_period && ` · ${SESSION_PERIOD_LABEL[exam.session_period]}`}
@@ -342,9 +351,11 @@ export function AdminExaminationsPage() {
                       </p>
                     </div>
                     <div className="flex shrink-0 gap-2">
-                      <Button size="sm" onClick={() => setSelected(exam)}>
-                        Manage →
-                      </Button>
+                      {exam.kind === 'exam' && (
+                        <Button size="sm" onClick={() => setSelected(exam)}>
+                          Manage →
+                        </Button>
+                      )}
                       <Button
                         size="sm"
                         variant="danger"

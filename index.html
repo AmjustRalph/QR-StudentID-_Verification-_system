@@ -8,6 +8,10 @@
   </head>
   <body>
     <div id="root"></div>
+    <!-- Printable content (see PrintCardOverlay) portals here, outside #root,
+         so #id-card-print-root has no preceding sibling content — hidden or
+         otherwise — that could push it down the page during print. -->
+    <div id="print-portal"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

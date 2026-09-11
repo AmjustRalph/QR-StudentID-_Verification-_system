@@ -172,6 +172,7 @@ async function ensureExamination(courseId: string): Promise<string> {
       // verifying, so the seeded exam exercises that flow instead of skipping it.
       venue: null,
       session_period: null,
+      kind: 'exam',
       semester: 'Semester 2, 2025/2026',
       eligibility_criteria: null,
     })
