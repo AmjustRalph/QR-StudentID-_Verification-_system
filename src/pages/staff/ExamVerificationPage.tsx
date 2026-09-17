@@ -9,6 +9,7 @@ import { Segmented } from '@/components/ui/Segmented'
 import { Spinner } from '@/components/ui/Spinner'
 import { StatusPill, type PillTone } from '@/components/ui/StatusPill'
 import { useAuth } from '@/features/auth/AuthProvider'
+import { cn } from '@/lib/cn'
 import { supabase, friendlyError } from '@/lib/supabase'
 import { useAsync } from '@/lib/useAsync'
 import { useOnlineStatus } from '@/lib/useOnlineStatus'
@@ -21,6 +22,7 @@ import { PhotoGlanceCard } from '@/features/scanning/PhotoGlanceCard'
 import { denialLabel, type ScannedStudent } from '@/features/scanning/verifyScannedCode'
 import { checkExamEligibility, type EligibilityResult } from '@/features/verification/checkExamEligibility'
 import { SESSION_PERIOD_LABEL, SESSION_PERIOD_OPTIONS } from '@/lib/sessionPeriod'
+import { useFeedbackSound } from '@/lib/useFeedbackSound'
 import type { ClearanceStatus, CourseRecord, ExaminationKind, SessionPeriod, StudentStatus } from '@/lib/database.types'
 
 type Examination = {
@@ -385,6 +387,7 @@ function VerificationSession({ exam: initialExam, onExit }: { exam: Examination;
   const invigilatorId = profile!.id
   const online = useOnlineStatus()
   const [exam, setExam] = useState(initialExam)
+  const [sessionEnded, setSessionEnded] = useState(false)
   const needsClassroomSetup = !exam.venue || !exam.session_period
   const isFormalExam = exam.kind === 'exam'
 
@@ -392,10 +395,12 @@ function VerificationSession({ exam: initialExam, onExit }: { exam: Examination;
   const queue = useOfflineQueue<QueuedDecision>(`qrsidvs:offline-verifications:${exam.id}`)
 
   const [result, setResult] = useState<EligibilityResult | null>(null)
+  const [resultNonce, setResultNonce] = useState(0)
   const [busy, setBusy] = useState(false)
   const [syncing, setSyncing] = useState(false)
   const [log, setLog] = useState<LogEntry[]>([])
   const [idQuery, setIdQuery] = useState('')
+  const { playGranted, playDenied } = useFeedbackSound()
 
   async function handleStartVerification(venue: string, period: SessionPeriod) {
     const { data, error } = await supabase
@@ -414,6 +419,9 @@ function VerificationSession({ exam: initialExam, onExit }: { exam: Examination;
     try {
       const outcome = await checkExamEligibility(raw, exam.id, exam.kind)
       setResult(outcome)
+      setResultNonce((n) => n + 1)
+      if (outcome.outcome === 'granted') playGranted()
+      else playDenied()
 
       const { error } = await supabase.from('verification_logs').insert({
         examination_id: exam.id,
@@ -443,18 +451,20 @@ function VerificationSession({ exam: initialExam, onExit }: { exam: Examination;
         reason: caught instanceof Error ? caught.message : 'Verification failed.',
         checks: { qrValid: false, registered: null, cleared: null },
       })
+      setResultNonce((n) => n + 1)
+      playDenied()
     } finally {
       setBusy(false)
     }
   }
 
   const { videoRef, status, error: cameraError } = useQrScanner((value) => void handleDecode(value), {
-    paused: busy || !online,
+    paused: busy || !online || sessionEnded,
     // The scanner view only renders once the invigilator has set the
     // classroom — see the needsClassroomSetup early return below. Acquiring
     // the camera any earlier attaches the stream to a <video> that isn't
     // mounted yet, and it never gets retried.
-    enabled: !needsClassroomSetup,
+    enabled: !needsClassroomSetup && !sessionEnded,
   })
 
   function handleOfflineDecision(student: CachedStudent) {
@@ -467,6 +477,9 @@ function VerificationSession({ exam: initialExam, onExit }: { exam: Examination;
       reason: evaluated.reason ?? null,
     })
     setResult(evaluated)
+    setResultNonce((n) => n + 1)
+    if (evaluated.outcome === 'granted') playGranted()
+    else playDenied()
     setLog((previous) =>
       [
         {
@@ -526,6 +539,31 @@ function VerificationSession({ exam: initialExam, onExit }: { exam: Examination;
     return <StartVerificationForm courseName={exam.course?.name ?? 'Examination'} onStart={handleStartVerification} />
   }
 
+  if (sessionEnded) {
+    const grantedCount = log.filter((entry) => entry.outcome === 'granted').length
+    const deniedCount = log.filter((entry) => entry.outcome === 'denied').length
+    return (
+      <Card className="mx-auto max-w-md animate-pop-in text-center">
+        <StatusPill tone="neutral">Session Ended</StatusPill>
+        <h2 className="mt-3 font-display text-lg font-bold text-navy-900">{exam.course?.name ?? 'Examination'}</h2>
+        <p className="mt-1 text-sm text-ink-muted">{venueLabel(exam)}</p>
+        <div className="mt-5 grid grid-cols-2 gap-3">
+          <div className="rounded-lg bg-verified-50 p-4">
+            <p className="font-display text-2xl font-bold text-verified-700">{grantedCount}</p>
+            <p className="eyebrow mt-1 text-verified-700">Granted</p>
+          </div>
+          <div className="rounded-lg bg-denied-50 p-4">
+            <p className="font-display text-2xl font-bold text-denied-700">{deniedCount}</p>
+            <p className="eyebrow mt-1 text-denied-700">Denied</p>
+          </div>
+        </div>
+        <Button className="mt-6" fullWidth onClick={onExit}>
+          Return to Examinations →
+        </Button>
+      </Card>
+    )
+  }
+
   return (
     <div className="space-y-6">
       <div className="rounded-xl bg-navy-900 p-5 text-white shadow-panel">
@@ -533,6 +571,9 @@ function VerificationSession({ exam: initialExam, onExit }: { exam: Examination;
           <h2 className="font-display text-lg font-bold">{exam.course?.name ?? 'Examination'}</h2>
           <StatusPill tone={KIND_TONE[exam.kind]} className="shrink-0">
             {KIND_LABEL[exam.kind]}
+          </StatusPill>
+          <StatusPill tone="verified" dot pulse className="shrink-0">
+            Verifying
           </StatusPill>
         </div>
         <p className="data mt-1 text-xs text-azure-100/70">
@@ -633,7 +674,7 @@ function VerificationSession({ exam: initialExam, onExit }: { exam: Examination;
           )}
 
           {result && !busy && (
-            <Card>
+            <Card key={resultNonce} className="animate-pop-in">
               {result.student ? (
                 <PhotoGlanceCard
                   size="lg"
@@ -665,8 +706,14 @@ function VerificationSession({ exam: initialExam, onExit }: { exam: Examination;
           <CardHeader title="Session Verification Log" />
           {log.length > 0 ? (
             <ul>
-              {log.map((entry) => (
-                <li key={entry.id} className="flex items-center justify-between gap-3 border-b border-line px-5 py-3 last:border-0">
+              {log.map((entry, index) => (
+                <li
+                  key={entry.id}
+                  className={cn(
+                    'flex items-center justify-between gap-3 border-b border-line px-5 py-3 last:border-0',
+                    index === 0 && 'animate-row-in',
+                  )}
+                >
                   <div className="min-w-0">
                     <p className="truncate font-medium text-navy-900">{entry.label}</p>
                     <p className="data text-xs text-ink-muted">
@@ -703,8 +750,8 @@ function VerificationSession({ exam: initialExam, onExit }: { exam: Examination;
         </Card>
       </div>
 
-      <Button variant="secondary" onClick={onExit}>
-        ← Back to Examinations
+      <Button variant="secondary" onClick={() => setSessionEnded(true)}>
+        End Session
       </Button>
     </div>
   )

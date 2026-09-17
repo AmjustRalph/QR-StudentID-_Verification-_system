@@ -1,10 +1,13 @@
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { AppShell, PageHeading } from '@/components/layout/AppShell'
 import { Card, CardHeader, EmptyState, StatTile } from '@/components/ui/Card'
 import { Alert } from '@/components/ui/Alert'
 import { Spinner } from '@/components/ui/Spinner'
+import { StatusPill } from '@/components/ui/StatusPill'
 import { supabase } from '@/lib/supabase'
 import { useAsync } from '@/lib/useAsync'
+import { cn } from '@/lib/cn'
 import { formatDate, formatTime } from '@/lib/format'
 
 type Overview = {
@@ -23,6 +26,15 @@ type FlaggedSession = {
   course: { code: string; name: string } | null
 }
 
+type LiveEvent = {
+  id: string
+  kind: 'attendance' | 'verification'
+  studentName: string
+  detail: string
+  outcome: 'present' | 'granted' | 'denied'
+  at: string
+}
+
 /** `head: true` asks Postgres for the count only — no rows cross the wire. */
 async function readCount(
   query: PromiseLike<{ count: number | null; error: { message: string } | null }>,
@@ -30,6 +42,106 @@ async function readCount(
   const { count, error } = await query
   if (error) throw new Error(error.message)
   return count ?? 0
+}
+
+/**
+ * Live Activity subscribes to new `attendance` and `verification_logs` rows
+ * via Supabase Realtime (see migration 0010) — each event only carries the
+ * raw inserted row, so a short follow-up query resolves the student's name
+ * and the course/exam it belongs to before the event is shown.
+ */
+function useLiveActivity(onActivity: () => void) {
+  const [events, setEvents] = useState<LiveEvent[]>([])
+  const onActivityRef = useRef(onActivity)
+  onActivityRef.current = onActivity
+
+  useEffect(() => {
+    const channel = supabase
+      .channel('admin-live-activity')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'attendance' },
+        async (payload) => {
+          const row = payload.new as { id: string; student_id: string; session_id: string; scanned_at: string }
+          const [{ data: student }, { data: session }] = await Promise.all([
+            supabase.from('students').select('full_name').eq('id', row.student_id).single(),
+            supabase
+              .from('attendance_sessions')
+              .select('course:courses(name)')
+              .eq('id', row.session_id)
+              .single(),
+          ])
+          const course = session as unknown as { course: { name: string } | null } | null
+          setEvents((previous) =>
+            [
+              {
+                id: row.id,
+                kind: 'attendance' as const,
+                studentName: student?.full_name ?? 'A student',
+                detail: course?.course?.name ?? 'Attendance',
+                outcome: 'present' as const,
+                at: row.scanned_at,
+              },
+              ...previous,
+            ].slice(0, 12),
+          )
+          onActivityRef.current()
+        },
+      )
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'verification_logs' },
+        async (payload) => {
+          const row = payload.new as {
+            id: string
+            student_id: string | null
+            examination_id: string
+            verified_at: string
+            outcome: 'granted' | 'denied'
+          }
+          const [{ data: student }, { data: exam }] = await Promise.all([
+            row.student_id
+              ? supabase.from('students').select('full_name').eq('id', row.student_id).single()
+              : Promise.resolve({ data: null }),
+            supabase.from('examinations').select('course:courses(name)').eq('id', row.examination_id).single(),
+          ])
+          const course = exam as unknown as { course: { name: string } | null } | null
+          setEvents((previous) =>
+            [
+              {
+                id: row.id,
+                kind: 'verification' as const,
+                studentName: student?.full_name ?? 'Unregistered code',
+                detail: course?.course?.name ?? 'Examination',
+                outcome: row.outcome,
+                at: row.verified_at,
+              },
+              ...previous,
+            ].slice(0, 12),
+          )
+          onActivityRef.current()
+        },
+      )
+      .subscribe()
+
+    return () => {
+      void supabase.removeChannel(channel)
+    }
+  }, [])
+
+  return events
+}
+
+const EVENT_LABEL: Record<LiveEvent['outcome'], string> = {
+  present: 'Marked Present',
+  granted: 'Access Granted',
+  denied: 'Access Denied',
+}
+
+const EVENT_TONE: Record<LiveEvent['outcome'], 'verified' | 'denied'> = {
+  present: 'verified',
+  granted: 'verified',
+  denied: 'denied',
 }
 
 export function AdminDashboardPage() {
@@ -98,6 +210,14 @@ export function AdminDashboardPage() {
     return (data ?? []) as unknown as FlaggedSession[]
   }, [])
 
+  // Realtime events are the trigger to refetch the stat tiles — that keeps the
+  // displayed counts exactly correct instead of hand-rolling an optimistic
+  // increment that could drift from the database.
+  const liveEvents = useLiveActivity(() => {
+    overview.reload()
+    flaggedSessions.reload()
+  })
+
   const stats = overview.data
 
   return (
@@ -157,7 +277,46 @@ export function AdminDashboardPage() {
         />
       )}
 
-      <div className="mt-6">
+      <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_1fr]">
+        <Card flush>
+          <CardHeader
+            title="Live Activity"
+            action={
+              <StatusPill tone="verified" dot pulse>
+                Live
+              </StatusPill>
+            }
+          />
+          {liveEvents.length > 0 ? (
+            <ul>
+              {liveEvents.map((event, index) => (
+                <li
+                  key={event.id}
+                  className={cn(
+                    'flex items-center justify-between gap-3 border-b border-line px-5 py-3 last:border-0',
+                    index === 0 && 'animate-row-in',
+                  )}
+                >
+                  <div className="min-w-0">
+                    <p className="truncate font-medium text-navy-900">{event.studentName}</p>
+                    <p className="data truncate text-xs text-ink-muted">
+                      {event.detail} · {formatTime(event.at)}
+                    </p>
+                  </div>
+                  <StatusPill tone={EVENT_TONE[event.outcome]} className="shrink-0">
+                    {EVENT_LABEL[event.outcome]}
+                  </StatusPill>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <EmptyState
+              title="Nothing yet"
+              description="Attendance scans and exam verifications will appear here the moment they happen, anywhere in the system."
+            />
+          )}
+        </Card>
+
         <Card flush>
           <CardHeader title="Flagged Sessions" />
           {flaggedSessions.loading ? (

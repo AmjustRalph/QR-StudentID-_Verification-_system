@@ -9,6 +9,7 @@ import { Segmented } from '@/components/ui/Segmented'
 import { Spinner } from '@/components/ui/Spinner'
 import { StatusPill } from '@/components/ui/StatusPill'
 import { useAuth } from '@/features/auth/AuthProvider'
+import { cn } from '@/lib/cn'
 import { supabase } from '@/lib/supabase'
 import { useAsync } from '@/lib/useAsync'
 import { formatTime } from '@/lib/format'
@@ -19,6 +20,7 @@ import { ScannerViewport } from '@/features/scanning/ScannerViewport'
 import { PhotoGlanceCard } from '@/features/scanning/PhotoGlanceCard'
 import { verifyScannedCode, denialLabel } from '@/features/scanning/verifyScannedCode'
 import { useAttendanceSession, type RosterEntry } from '@/features/attendance/useAttendanceSession'
+import { useFeedbackSound } from '@/lib/useFeedbackSound'
 
 function toGlanceStudent(entry: RosterEntry) {
   return {
@@ -194,9 +196,11 @@ function ScanningSession({ course, onExit }: { course: CourseRecord; onExit: () 
   )
 
   const [lastScan, setLastScan] = useState<LastScan | null>(null)
+  const [scanNonce, setScanNonce] = useState(0)
   const [busy, setBusy] = useState(false)
   const [endingSession, setEndingSession] = useState(false)
   const [manualQuery, setManualQuery] = useState('')
+  const { playGranted, playDenied } = useFeedbackSound()
 
   async function handleDecode(raw: string) {
     if (busy) return
@@ -206,6 +210,8 @@ function ScanningSession({ course, onExit }: { course: CourseRecord; onExit: () 
       const result = await verifyScannedCode(raw)
       if (!result.valid) {
         setLastScan({ outcome: 'denied', reason: denialLabel(result.reason) })
+        setScanNonce((n) => n + 1)
+        playDenied()
         return
       }
       const scanSource = result.kind === 'live' ? 'digital_display' : 'physical_card'
@@ -221,13 +227,20 @@ function ScanningSession({ course, onExit }: { course: CourseRecord; onExit: () 
       }
       if (outcome.ok) {
         setLastScan({ outcome: 'marked', entry })
+        setScanNonce((n) => n + 1)
+        playGranted()
       } else if (outcome.alreadyMarked) {
         setLastScan({ outcome: 'already_marked', entry })
+        setScanNonce((n) => n + 1)
       } else {
         setLastScan({ outcome: 'error', message: outcome.message })
+        setScanNonce((n) => n + 1)
+        playDenied()
       }
     } catch (caught) {
       setLastScan({ outcome: 'error', message: caught instanceof Error ? caught.message : 'Verification failed.' })
+      setScanNonce((n) => n + 1)
+      playDenied()
     } finally {
       setBusy(false)
     }
@@ -323,7 +336,7 @@ function ScanningSession({ course, onExit }: { course: CourseRecord; onExit: () 
               {' · '}Lect. {profile?.full_name}
             </p>
           </div>
-          <StatusPill tone="verified" dot className="shrink-0">
+          <StatusPill tone="verified" dot pulse className="shrink-0">
             Scanning Active
           </StatusPill>
         </div>
@@ -339,7 +352,7 @@ function ScanningSession({ course, onExit }: { course: CourseRecord; onExit: () 
           />
 
           {lastScan && (
-            <Card>
+            <Card key={scanNonce} className="animate-pop-in">
               {lastScan.outcome === 'checking' ? (
                 <div className="flex items-center justify-center gap-2 py-2 text-sm text-ink-muted">
                   <Spinner className="h-4 w-4 text-azure-600" /> Checking code…
@@ -376,8 +389,14 @@ function ScanningSession({ course, onExit }: { course: CourseRecord; onExit: () 
             </div>
             {present.length > 0 ? (
               <ul>
-                {present.slice(0, 8).map((entry) => (
-                  <li key={entry.studentId} className="flex items-center justify-between gap-3 border-b border-line px-5 py-3 last:border-0">
+                {present.slice(0, 8).map((entry, index) => (
+                  <li
+                    key={entry.studentId}
+                    className={cn(
+                      'flex items-center justify-between gap-3 border-b border-line px-5 py-3 last:border-0',
+                      index === 0 && 'animate-row-in',
+                    )}
+                  >
                     <p className="min-w-0 truncate font-medium text-navy-900">{entry.fullName}</p>
                     <p className="data shrink-0 text-xs text-ink-muted">
                       {entry.presentAt && formatTime(entry.presentAt)}

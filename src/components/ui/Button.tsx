@@ -45,7 +45,7 @@ export function Button({
       aria-busy={loading || undefined}
       className={cn(
         'inline-flex items-center justify-center gap-2 rounded-lg font-display font-semibold',
-        'transition-colors disabled:cursor-not-allowed disabled:opacity-70',
+        'transition-[background-color,color,transform] active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-70 disabled:active:scale-100',
         VARIANT[variant],
         SIZE[size],
         fullWidth && 'w-full',

@@ -1,6 +1,22 @@
 import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { NavLink } from 'react-router-dom'
+import {
+  LayoutDashboard,
+  BookOpen,
+  CalendarCheck,
+  CalendarClock,
+  UserCircle,
+  QrCode,
+  ClipboardList,
+  ShieldCheck,
+  Users,
+  UserCog,
+  BarChart3,
+  LogOut,
+  Menu,
+  type LucideIcon,
+} from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { Logo } from '@/components/ui/Logo'
 import { StatusPill } from '@/components/ui/StatusPill'
@@ -10,65 +26,58 @@ import { useAuth } from '@/features/auth/AuthProvider'
 import { ROLE_LABEL, isRole, type Role } from '@/lib/roles'
 import { LOGIN_ROLE_HINT_KEY } from '@/lib/roleMismatchNotice'
 
-export type NavItem = { to: string; label: string; end?: boolean }
+export type NavItem = { to: string; label: string; end?: boolean; icon: LucideIcon }
 
 export const NAV_BY_ROLE: Record<Role, NavItem[]> = {
   student: [
-    { to: '/student', label: 'My Dashboard', end: true },
-    { to: '/student/courses', label: 'My Courses' },
-    { to: '/student/attendance', label: 'Attendance History' },
-    { to: '/student/examinations', label: 'Examination Schedule' },
-    { to: '/student/profile', label: 'My Profile' },
+    { to: '/student', label: 'My Dashboard', end: true, icon: LayoutDashboard },
+    { to: '/student/courses', label: 'My Courses', icon: BookOpen },
+    { to: '/student/attendance', label: 'Attendance History', icon: CalendarCheck },
+    { to: '/student/examinations', label: 'Examination Schedule', icon: CalendarClock },
+    { to: '/student/profile', label: 'My Profile', icon: UserCircle },
   ],
   staff: [
-    { to: '/staff', label: 'My Dashboard', end: true },
-    { to: '/staff/attendance', label: 'Attendance Scanning' },
-    { to: '/staff/records', label: 'Attendance Records' },
-    { to: '/staff/verification', label: 'Exam Verification' },
-    { to: '/staff/profile', label: 'My Profile' },
+    { to: '/staff', label: 'My Dashboard', end: true, icon: LayoutDashboard },
+    { to: '/staff/attendance', label: 'Attendance Scanning', icon: QrCode },
+    { to: '/staff/records', label: 'Attendance Records', icon: ClipboardList },
+    { to: '/staff/verification', label: 'Exam Verification', icon: ShieldCheck },
+    { to: '/staff/profile', label: 'My Profile', icon: UserCircle },
   ],
   admin: [
-    { to: '/admin', label: 'Overview', end: true },
-    { to: '/admin/students', label: 'Student Management' },
-    { to: '/admin/staff', label: 'Staff Accounts' },
-    { to: '/admin/attendance', label: 'Attendance Records' },
-    { to: '/admin/examinations', label: 'Examinations' },
-    { to: '/admin/reports', label: 'Reports' },
+    { to: '/admin', label: 'Overview', end: true, icon: LayoutDashboard },
+    { to: '/admin/students', label: 'Student Management', icon: Users },
+    { to: '/admin/staff', label: 'Staff Accounts', icon: UserCog },
+    { to: '/admin/attendance', label: 'Attendance Records', icon: ClipboardList },
+    { to: '/admin/examinations', label: 'Examinations', icon: CalendarClock },
+    { to: '/admin/reports', label: 'Reports', icon: BarChart3 },
   ],
 }
 
 function NavList({ items, onNavigate }: { items: NavItem[]; onNavigate?: () => void }) {
   return (
     <nav className="py-3">
-      {items.map((item) => (
-        <NavLink
-          key={item.to}
-          to={item.to}
-          end={item.end}
-          onClick={onNavigate}
-          className={({ isActive }) =>
-            cn(
-              'flex items-center gap-3 border-l-[3px] px-5 py-2.5 text-sm transition-colors',
-              isActive
-                ? 'border-azure-600 bg-white/[0.06] font-semibold text-white'
-                : 'border-transparent text-azure-100/60 hover:bg-white/[0.03] hover:text-white',
-            )
-          }
-        >
-          {({ isActive }) => (
-            <>
-              <span
-                aria-hidden
-                className={cn(
-                  'h-3.5 w-3.5 shrink-0 rounded-sm',
-                  isActive ? 'bg-azure-600' : 'bg-white/15',
-                )}
-              />
-              {item.label}
-            </>
-          )}
-        </NavLink>
-      ))}
+      {items.map((item) => {
+        const Icon = item.icon
+        return (
+          <NavLink
+            key={item.to}
+            to={item.to}
+            end={item.end}
+            onClick={onNavigate}
+            className={({ isActive }) =>
+              cn(
+                'flex items-center gap-3 border-l-[3px] px-5 py-2.5 text-sm transition-colors',
+                isActive
+                  ? 'border-azure-600 bg-white/[0.06] font-semibold text-white'
+                  : 'border-transparent text-azure-100/60 hover:bg-white/[0.03] hover:text-white',
+              )
+            }
+          >
+            <Icon aria-hidden className="h-4 w-4 shrink-0" strokeWidth={2} />
+            {item.label}
+          </NavLink>
+        )
+      })}
     </nav>
   )
 }
@@ -84,7 +93,7 @@ function SidebarSignOut({ onNavigate }: { onNavigate?: () => void }) {
       }}
       className="flex w-full items-center gap-3 border-l-[3px] border-transparent px-5 py-2.5 text-sm text-azure-100/60 transition-colors hover:bg-white/[0.03] hover:text-white"
     >
-      <span aria-hidden className="h-3.5 w-3.5 shrink-0 rounded-sm bg-white/15" />
+      <LogOut aria-hidden className="h-4 w-4 shrink-0" strokeWidth={2} />
       Log Out
     </button>
   )
@@ -128,7 +137,7 @@ export function AppShell({ title, actions, children }: Props) {
   return (
     <div className="min-h-dvh lg:grid lg:grid-cols-[15rem_1fr]">
       {/* Desktop rail */}
-      <aside className="hidden bg-navy-900 lg:block print:hidden">
+      <aside className="hidden bg-linear-to-b from-navy-900 to-navy-950 lg:block print:hidden">
         <div className="sticky top-0 flex h-dvh flex-col">
           <div className="border-b border-white/10 px-5 py-4">
             <Logo withWordmark />
@@ -148,7 +157,7 @@ export function AppShell({ title, actions, children }: Props) {
             className="absolute inset-0 bg-navy-950/60"
             onClick={() => setDrawerOpen(false)}
           />
-          <div className="relative flex h-full w-64 flex-col bg-navy-900 shadow-pop">
+          <div className="relative flex h-full w-64 flex-col bg-linear-to-b from-navy-900 to-navy-950 shadow-pop">
             <div className="border-b border-white/10 px-5 py-4">
               <Logo withWordmark />
             </div>
@@ -167,9 +176,7 @@ export function AppShell({ title, actions, children }: Props) {
             onClick={() => setDrawerOpen(true)}
             className="grid h-9 w-9 place-items-center rounded-md border border-line-strong text-navy-900 lg:hidden"
           >
-            <span aria-hidden className="text-lg leading-none">
-              ≡
-            </span>
+            <Menu aria-hidden className="h-5 w-5" strokeWidth={2} />
           </button>
 
           <h1 className="min-w-0 flex-1 truncate font-display text-lg font-bold text-navy-900">{title}</h1>

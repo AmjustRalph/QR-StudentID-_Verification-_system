@@ -24,11 +24,15 @@ type Props = {
   children: ReactNode
   /** Leading status dot — used on PRESENT / GRANTED / SCANNING ACTIVE style pills. */
   dot?: boolean
+  /** Pulses the dot — reserve for a genuinely ongoing state (an open scanning
+   * session, a live feed), not every dot pill, or the "this is happening
+   * right now" signal loses meaning. */
+  pulse?: boolean
   className?: string
 }
 
 /** The tracked, uppercase mono status chip used across every table and result card. */
-export function StatusPill({ tone = 'neutral', children, dot = false, className }: Props) {
+export function StatusPill({ tone = 'neutral', children, dot = false, pulse = false, className }: Props) {
   return (
     <span
       className={cn(
@@ -37,7 +41,12 @@ export function StatusPill({ tone = 'neutral', children, dot = false, className 
         className,
       )}
     >
-      {dot && <span aria-hidden className={cn('h-1.5 w-1.5 rounded-full', DOT[tone])} />}
+      {dot && (
+        <span
+          aria-hidden
+          className={cn('h-1.5 w-1.5 rounded-full', DOT[tone], pulse && 'animate-live-pulse')}
+        />
+      )}
       {children}
     </span>
   )
