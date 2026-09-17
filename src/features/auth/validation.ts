@@ -26,9 +26,8 @@ export type SignUpValues = {
 
 export type SignUpErrors = Partial<Record<keyof SignUpValues, string>>
 
-// Matches the GCTU/22/0148 shape shown throughout the mockups, while staying
-// tolerant of a different segment length.
-const STUDENT_ID_PATTERN = /^[A-Z]{2,6}\/\d{2}\/\d{3,6}$/
+// GCTU's real index number is exactly 10 digits, e.g. 4211230109.
+const STUDENT_ID_PATTERN = /^\d{10}$/
 
 export function validateSignUp(values: SignUpValues): SignUpErrors {
   const errors: SignUpErrors = {}
@@ -44,8 +43,8 @@ export function validateSignUp(values: SignUpValues): SignUpErrors {
     errors.email = 'Enter a valid email address.'
   }
 
-  if (!STUDENT_ID_PATTERN.test(values.studentIdNumber.trim().toUpperCase())) {
-    errors.studentIdNumber = 'Use the format on your card, e.g. GCTU/22/0148.'
+  if (!STUDENT_ID_PATTERN.test(values.studentIdNumber.trim())) {
+    errors.studentIdNumber = 'Enter your 10-digit index number, e.g. 4211230109.'
   }
 
   if (!values.programme) errors.programme = 'Select your programme.'

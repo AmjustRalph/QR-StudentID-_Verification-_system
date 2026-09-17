@@ -35,6 +35,7 @@ export function StudentProfilePage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [fullName, setFullName] = useState('')
+  const [studentIdNumber, setStudentIdNumber] = useState('')
   const [photoUrl, setPhotoUrl] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
@@ -46,6 +47,7 @@ export function StudentProfilePage() {
   useEffect(() => {
     if (student) {
       setFullName(student.full_name)
+      setStudentIdNumber(student.student_id_number)
       setPhotoUrl(student.photo_url)
     }
   }, [student])
@@ -107,11 +109,15 @@ export function StudentProfilePage() {
       setSaveError('Enter your full name.')
       return
     }
+    if (!/^\d{10}$/.test(studentIdNumber.trim())) {
+      setSaveError('Enter a valid 10-digit index number, e.g. 4211230109.')
+      return
+    }
 
     setSaving(true)
     const { error: updateError } = await supabase
       .from('students')
-      .update({ full_name: fullName.trim() })
+      .update({ full_name: fullName.trim(), student_id_number: studentIdNumber.trim() })
       .eq('id', student.id)
     setSaving(false)
 
@@ -179,7 +185,7 @@ export function StudentProfilePage() {
               <ReadOnlyField label="Level" value={student.level ? String(student.level) : ''} />
             </div>
             <p className="mt-4 text-xs text-ink-muted">
-              Contact an administrator to change your email, programme, level, or student ID.
+              Contact an administrator to change your email, programme, or level.
             </p>
           </Card>
 
@@ -194,6 +200,19 @@ export function StudentProfilePage() {
                 value={fullName}
                 onChange={(event) => {
                   setFullName(event.target.value)
+                  setSaved(false)
+                }}
+              />
+
+              <Field
+                label="Index Number"
+                className="data"
+                inputMode="numeric"
+                maxLength={10}
+                hint="10 digits, e.g. 4211230109."
+                value={studentIdNumber}
+                onChange={(event) => {
+                  setStudentIdNumber(event.target.value.replace(/\D/g, ''))
                   setSaved(false)
                 }}
               />

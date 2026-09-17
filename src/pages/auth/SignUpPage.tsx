@@ -122,12 +122,14 @@ export function SignUpPage() {
         />
 
         <Field
-          label="Student ID"
-          placeholder="GCTU/22/0148"
-          className="data uppercase"
+          label="Index Number"
+          placeholder="4211230109"
+          className="data"
+          inputMode="numeric"
+          maxLength={10}
           value={values.studentIdNumber}
           error={errors.studentIdNumber}
-          onChange={(event) => set('studentIdNumber', event.target.value)}
+          onChange={(event) => set('studentIdNumber', event.target.value.replace(/\D/g, ''))}
         />
 
         <SelectField

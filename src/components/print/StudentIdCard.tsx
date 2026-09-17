@@ -53,7 +53,6 @@ export type IdCardStudent = {
   full_name: string
   student_id_number: string
   programme: string | null
-  level: number | null
   photo_url: string | null
 }
 
@@ -85,8 +84,10 @@ export function StudentIdCardFront({ student }: { student: IdCardStudent }) {
         </div>
       </div>
 
-      {/* Body */}
-      <div className="flex flex-1 items-center gap-[3mm] px-[3.5mm] py-[2.5mm]">
+      {/* Body — photo and text kept together as one group and centred as a
+          unit, rather than pinned to opposite edges (that left a dead gap
+          in the middle when the text didn't fill the remaining width). */}
+      <div className="flex flex-1 items-center justify-center gap-[4mm] px-[3.5mm] py-[2.5mm]">
         {student.photo_url ? (
           <img
             src={student.photo_url}
@@ -103,15 +104,11 @@ export function StudentIdCardFront({ student }: { student: IdCardStudent }) {
           </div>
         )}
 
-        <div className="min-w-0 flex-1 leading-[1.6]">
+        <div className="min-w-0 max-w-[38mm] leading-[1.6]">
           <p className="truncate font-display text-[9.5px] font-bold text-navy-900">{student.full_name}</p>
           <p className="data mt-[1.5mm] text-[8px] font-semibold text-azure-700">{student.student_id_number}</p>
-          {(student.programme || student.level) && (
-            <p className="mt-[2.5mm] truncate text-[6.5px] text-ink-muted">
-              {student.programme}
-              {student.programme && student.level && ' · '}
-              {student.level && `Level ${student.level}`}
-            </p>
+          {student.programme && (
+            <p className="mt-[2.5mm] truncate text-[6.5px] text-ink-muted">{student.programme}</p>
           )}
         </div>
       </div>

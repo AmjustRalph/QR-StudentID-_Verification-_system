@@ -43,7 +43,10 @@ export function friendlyError(error: unknown): string {
     return 'An account already exists for this email. Try signing in instead.'
   }
   if (lower.includes('duplicate key') && lower.includes('student_id_number')) {
-    return 'That student ID is already registered.'
+    return 'That index number is already registered to another account.'
+  }
+  if (lower.includes('index number must be exactly 10 digits')) {
+    return 'Enter a valid 10-digit index number.'
   }
   if (lower.includes('password') && lower.includes('at least')) {
     return 'Password must be at least 8 characters.'

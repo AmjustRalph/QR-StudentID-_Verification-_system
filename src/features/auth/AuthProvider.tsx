@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import type { ReactNode } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
+import { useInactivityLogout } from '@/lib/useInactivityLogout'
 import type { UserRecord } from '@/lib/database.types'
 
 type SignUpInput = {
@@ -130,7 +131,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         data: {
           role: 'student',
           full_name: input.fullName.trim(),
-          student_id_number: input.studentIdNumber.trim().toUpperCase(),
+          student_id_number: input.studentIdNumber.trim(),
           programme: input.programme.trim(),
           level: String(input.level),
         },
@@ -157,6 +158,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const refreshProfile = useCallback(() => loadProfile(session), [loadProfile, session])
+
+  // Auto sign-out after 18 hours with no interaction — Supabase's own refresh
+  // token would otherwise keep a session alive indefinitely.
+  useInactivityLogout(Boolean(session), () => void signOut())
 
   const value = useMemo<AuthContextValue>(
     () => ({
