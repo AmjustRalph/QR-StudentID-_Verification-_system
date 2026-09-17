@@ -48,7 +48,7 @@ function InviteForm({ onInvited }: { onInvited: () => void }) {
     <Card>
       <p className="eyebrow text-ink-muted">Invite Staff</p>
       <p className="mt-1 text-sm text-ink-muted">
-        Sends a Supabase Auth invite email. The invitee sets their own password from the link — this is the
+        Sends a Supabase Auth invite email. The invitee sets their own password from the link; this is the
         only way a Staff account is created. Invigilators use this same role, just pointed at exam sessions
         instead of lecture sessions.
       </p>
@@ -217,7 +217,7 @@ function StaffDetail({
         {member.status === 'deactivated' && (
           <p className="mt-2 text-xs text-ink-muted">
             A deactivated staff member is signed out of any active session and cannot sign back in, start
-            attendance sessions, mark attendance, or record exam verifications — until reactivated.
+            attendance sessions, mark attendance, or record exam verifications, until reactivated.
           </p>
         )}
       </Card>
@@ -295,7 +295,7 @@ export function StaffAccountsPage() {
 
   return (
     <AppShell title="Staff Accounts">
-      <PageHeading title="Staff" meta="Lecturers and invigilators — one role covers both" />
+      <PageHeading title="Staff" meta="Lecturers and invigilators: one role covers both" />
 
       <div className="grid gap-6 lg:grid-cols-[1fr_1.3fr]">
         <InviteForm onInvited={() => staff.reload()} />

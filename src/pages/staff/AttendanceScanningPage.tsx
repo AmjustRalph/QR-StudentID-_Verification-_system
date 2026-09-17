@@ -114,7 +114,7 @@ function EndSessionPanel({
     <div className="space-y-4 p-5">
       <p className="text-sm text-ink-muted">
         Scanned count for this session is <span className="data font-semibold text-navy-900">{scannedCount}</span>.
-        Enter the headcount you actually counted in the room — if it doesn't match, the session is flagged for
+        Enter the headcount you actually counted in the room. If it doesn't match, the session is flagged for
         admin review, but still closes normally.
       </p>
       <Field
@@ -328,7 +328,7 @@ function ScanningSession({ course, onExit }: { course: CourseRecord; onExit: () 
       <div className="rounded-xl bg-navy-900 p-5 text-white shadow-panel">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="font-display text-lg font-bold">{course.name} — Lecture</h2>
+            <h2 className="font-display text-lg font-bold">{course.name} · Lecture</h2>
             <p className="data mt-1 text-xs text-azure-100/70">
               Session started {formatTime(session.started_at)}
               {session.venue && ` · ${session.venue}`}

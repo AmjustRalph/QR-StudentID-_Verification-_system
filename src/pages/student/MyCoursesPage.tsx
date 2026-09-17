@@ -91,7 +91,7 @@ export function MyCoursesPage() {
             description={
               query
                 ? 'Try a different search.'
-                : 'An administrator assigns your courses for the semester — contact them if this looks wrong.'
+                : 'An administrator assigns your courses for the semester; contact them if this looks wrong.'
             }
           />
         )}

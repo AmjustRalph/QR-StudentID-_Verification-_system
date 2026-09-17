@@ -40,7 +40,7 @@ export function SetupRequiredPage({ missing }: { missing: string[] }) {
             from your Supabase project · Settings → API
           </li>
           <li>
-            <span className="font-semibold text-navy-900">3.</span> Restart the dev server — Vite
+            <span className="font-semibold text-navy-900">3.</span> Restart the dev server. Vite
             only reads{' '}
             <code className="data rounded bg-surface px-1.5 py-0.5 text-xs">.env</code> at startup
           </li>

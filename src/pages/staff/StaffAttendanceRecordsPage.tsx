@@ -148,7 +148,7 @@ export function StaffAttendanceRecordsPage() {
             <option value="">All my courses</option>
             {courses.data?.map((course) => (
               <option key={course.id} value={course.id}>
-                {course.code} — {course.name}
+                {course.code} · {course.name}
               </option>
             ))}
           </SelectField>

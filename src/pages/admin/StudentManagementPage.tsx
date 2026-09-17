@@ -187,7 +187,7 @@ function StudentDetail({
         </Button>
         {student.status === 'deactivated' && (
           <p className="mt-2 text-xs text-ink-muted">
-            A deactivated student's codes are rejected by verify-code on every scan — they cannot be marked
+            A deactivated student's codes are rejected by verify-code on every scan, so they cannot be marked
             present or granted exam access until reactivated.
           </p>
         )}
@@ -237,7 +237,7 @@ function StudentDetail({
       <Card>
         <p className="eyebrow text-ink-muted">Physical Card Code</p>
         <p className="mt-2 text-sm text-ink-muted">
-          The permanent code embedded on this student's PVC card. Deterministic — regenerating always returns
+          The permanent code embedded on this student's PVC card. Deterministic: regenerating always returns
           the same code, matching a reprinted card.
         </p>
 

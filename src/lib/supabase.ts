@@ -37,7 +37,7 @@ export function friendlyError(error: unknown): string {
 
   if (lower.includes('invalid login credentials')) return 'Incorrect email or password.'
   if (lower.includes('email not confirmed')) {
-    return 'Confirm your email address first — check your inbox for the verification link.'
+    return 'Confirm your email address first: check your inbox for the verification link.'
   }
   if (lower.includes('user already registered') || lower.includes('already been registered')) {
     return 'An account already exists for this email. Try signing in instead.'

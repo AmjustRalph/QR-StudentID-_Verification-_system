@@ -29,12 +29,12 @@ type ScanSourceHint = 'physical_card' | 'digital_display'
 export const DENIAL_LABEL: Record<string, string> = {
   malformed: 'Unrecognised code',
   bad_signature: 'Invalid code',
-  expired: 'Code expired — ask the student to refresh their dashboard',
+  expired: 'Code expired: ask the student to refresh their dashboard',
   unknown_student: 'No matching student record',
   inactive_student: 'Student account is deactivated',
-  source_mismatch: 'Physical card required — phone code not accepted for examinations',
+  source_mismatch: 'Physical card required: phone code not accepted for examinations',
   not_registered: 'Not registered for this examination',
-  pending_fees: 'Outstanding fees — clearance required',
+  pending_fees: 'Outstanding fees: clearance required',
   blocked: 'Administrative clearance blocked',
 }
 

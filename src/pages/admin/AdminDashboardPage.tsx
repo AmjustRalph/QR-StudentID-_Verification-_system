@@ -265,7 +265,7 @@ export function AdminDashboardPage() {
         <Alert
           tone="pending"
           className="mt-5"
-          title={`${stats?.flagged} session${stats?.flagged === 1 ? '' : 's'} flagged — scanned count did not match reported headcount`}
+          title={`${stats?.flagged} session${stats?.flagged === 1 ? '' : 's'} flagged: scanned count did not match reported headcount`}
           action={
             <Link
               to="/admin/reports"

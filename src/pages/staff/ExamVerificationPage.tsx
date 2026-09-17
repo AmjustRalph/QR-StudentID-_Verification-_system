@@ -131,7 +131,7 @@ function ScheduleQuizForm({ onCreated }: { onCreated: () => void }) {
     <Card>
       <p className="eyebrow text-ink-muted">Schedule Quiz / Test</p>
       <p className="mt-1 text-xs text-ink-muted">
-        For one of your own courses — no admin needed. Students just scan in, either code works, and there's no
+        For one of your own courses, no admin needed. Students just scan in, either code works, and there's no
         registration or clearance check.
       </p>
       <form onSubmit={handleSubmit} noValidate className="mt-4 space-y-4">
@@ -141,7 +141,7 @@ function ScheduleQuizForm({ onCreated }: { onCreated: () => void }) {
           <option value="">Select one of your courses</option>
           {courses.data?.map((course) => (
             <option key={course.id} value={course.id}>
-              {course.code} — {course.name}
+              {course.code} · {course.name}
             </option>
           ))}
         </SelectField>
@@ -211,7 +211,7 @@ function ExaminationPicker({
       ) : (
         <EmptyState
           title="Nothing scheduled"
-          description="An administrator schedules formal exams — or schedule your own quiz or test on the left."
+          description="An administrator schedules formal exams, or schedule your own quiz or test on the left."
         />
       )}
     </Card>
@@ -364,7 +364,7 @@ function StartVerificationForm({
     <Card className="mx-auto max-w-md">
       <p className="eyebrow text-ink-muted">Start Exam Verification</p>
       <h2 className="mt-1 font-display text-lg font-bold text-navy-900">{courseName}</h2>
-      <p className="mt-1 text-xs text-ink-muted">You're the invigilator in the room — set where and when this is happening.</p>
+      <p className="mt-1 text-xs text-ink-muted">You're the invigilator in the room, so set where and when this is happening.</p>
       <form onSubmit={handleSubmit} noValidate className="mt-4 space-y-4">
         {error && <Alert tone="denied">{error}</Alert>}
         <Field
@@ -620,7 +620,7 @@ function VerificationSession({ exam: initialExam, onExit }: { exam: Examination;
             />
           ) : (
             <Card>
-              <p className="eyebrow text-pending-600">Offline — verify by Student ID</p>
+              <p className="eyebrow text-pending-600">Offline: verify by Student ID</p>
               <p className="mt-1 text-xs text-ink-muted">
                 Confirm the physical card matches the person in front of you, then look them up below. The
                 decision is based on the roster as of your last connection.
@@ -638,7 +638,7 @@ function VerificationSession({ exam: initialExam, onExit }: { exam: Examination;
                 </div>
               ) : roster.error && !roster.data ? (
                 <Alert tone="denied" className="mt-3">
-                  No cached roster available for this exam — connect once before going offline.
+                  No cached roster available for this exam; connect once before going offline.
                 </Alert>
               ) : matches.length > 0 ? (
                 <div className="mt-3 space-y-2">

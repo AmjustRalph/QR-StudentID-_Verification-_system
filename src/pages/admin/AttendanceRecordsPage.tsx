@@ -140,7 +140,7 @@ export function AttendanceRecordsPage() {
             <option value="">All courses</option>
             {courses.data?.map((course) => (
               <option key={course.id} value={course.id}>
-                {course.code} — {course.name}
+                {course.code} · {course.name}
               </option>
             ))}
           </SelectField>

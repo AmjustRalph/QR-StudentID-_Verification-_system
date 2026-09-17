@@ -79,8 +79,8 @@ export function PrintCardOverlay({
       </div>
 
       <p className="id-card-no-print mx-auto mt-4 max-w-sm text-center text-xs text-white/70">
-        In the print dialog, set scale to "Actual size" and make sure "Background graphics" is turned on —
-        otherwise the navy bands print as white. This prints {COPIES} front+back copies ({COPIES * 2} pages) —
+        In the print dialog, set scale to "Actual size" and make sure "Background graphics" is turned on,
+        otherwise the navy bands print as white. This prints {COPIES} front+back copies ({COPIES * 2} pages);
         flip the card stock between each front and its back for a double-sided print.
       </p>
     </div>,

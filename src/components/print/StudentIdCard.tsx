@@ -151,7 +151,7 @@ export function StudentIdCardBack({ cardCode }: { cardCode: string }) {
           Knowledge Comes From Learning
         </p>
         <p className="mt-[0.5mm] text-[4.5px] text-white/70">
-          Property of GCTU — if found, please return to the Registry
+          Property of GCTU: if found, please return to the Registry
         </p>
       </div>
     </div>

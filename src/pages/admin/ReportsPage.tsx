@@ -125,7 +125,7 @@ export function ReportsPage() {
             <option value="">All Courses</option>
             {courses.data?.map((course) => (
               <option key={course.id} value={course.id}>
-                {course.code} — {course.name}
+                {course.code} · {course.name}
               </option>
             ))}
           </SelectField>
@@ -155,7 +155,7 @@ export function ReportsPage() {
 
       <Card flush className="mb-6">
         <CardHeader
-          title={`Report Preview — Attendance Summary (${formatDate(from)} – ${formatDate(to)})`}
+          title={`Report Preview: Attendance Summary (${formatDate(from)} – ${formatDate(to)})`}
           action={
             <div className="flex gap-2 print:hidden">
               <Button

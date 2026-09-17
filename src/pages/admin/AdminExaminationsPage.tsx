@@ -72,7 +72,7 @@ function NewExaminationForm({ onCreated }: { onCreated: () => void }) {
           <option value="">Select a course</option>
           {courses.data?.map((course) => (
             <option key={course.id} value={course.id}>
-              {course.code} — {course.name}
+              {course.code} · {course.name}
             </option>
           ))}
         </SelectField>
@@ -291,7 +291,7 @@ export function AdminExaminationsPage() {
     if ((count ?? 0) > 0) {
       setDeleteError({
         id: examId,
-        message: `Cannot delete — ${count} verification${count === 1 ? '' : 's'} already logged for this exam.`,
+        message: `Cannot delete: ${count} verification${count === 1 ? '' : 's'} already logged for this exam.`,
       })
       setDeletingId(null)
       return

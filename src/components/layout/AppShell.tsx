@@ -203,7 +203,7 @@ export function AppShell({ title, actions, children }: Props) {
             <Alert
               tone="azure"
               className="mb-6"
-              title={`You selected ${ROLE_LABEL[roleMismatch]}, but this account is registered as ${ROLE_LABEL[role]} — you've been taken to the right place.`}
+              title={`You selected ${ROLE_LABEL[roleMismatch]}, but this account is registered as ${ROLE_LABEL[role]}. You've been taken to the right place.`}
               action={
                 <button
                   aria-label="Dismiss"

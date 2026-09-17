@@ -105,7 +105,7 @@ export function LoginPage() {
             setRole(next)
             setRoleTouched(true)
           }}
-          hint="For convenience only — your actual access comes from your account record."
+          hint="For convenience only; your actual access comes from your account record."
         />
 
         <Button type="submit" fullWidth size="lg" loading={submitting}>
