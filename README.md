@@ -53,7 +53,7 @@ npm run typecheck
 
 ## Verifying the Day 1 slice
 
-1. Open `/signup`, register a student with a `@gctu.edu.gh` address and an ID like `GCTU/22/0148`.
+1. Open `/signup`, register a student with a `@gctu.edu.gh` address and an ID like"4211230109`.
 2. Confirm in Supabase that the trigger created three rows: one in `users` (role `student`),
    one in `students`, one in `student_secrets`.
 3. Sign in at `/login`. You should land on `/student` with a populated header and empty
@@ -104,7 +104,7 @@ table to hold them. It also backs the CLEARED / PENDING FEES badges in Figure 4.
 
 ## Status
 
-All 14 screens from spec §5 are built and live against Supabase — auth, all three role dashboards,
+All 14 screens from spec  are built and live against Supabase — auth, all three role dashboards,
 both scanning screens (backed by real signed QR codes minted/verified through Edge Functions), and
 every admin management screen (Student Management, Staff Accounts, Examinations, Attendance
 Records, Reports).
